@@ -85,6 +85,7 @@ namespace DiscordBridge
 		/// If not set, defaults to "Name".
 		/// {0} - User role;
 		/// {1} - User name.
+		/// {2} - User nickname on the server.
 		/// </summary>
 		public string CustomNameFormat
 		{

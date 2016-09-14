@@ -103,11 +103,6 @@ namespace DiscordBridge.Extensions
 		/// <returns>A string with no chat tags.</returns>
 		public static string StripTags(this string s)
 		{
-			var tags = new Dictionary<string, Func<Tag, string>>
-			{
-				["c"] = (t) => { return ""; }
-			};
-
 			// Source: Terraria
 			var regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
 			MatchCollection matches = regex.Matches(s);
@@ -115,7 +110,7 @@ namespace DiscordBridge.Extensions
 			foreach (Match m in matches)
 			{
 				Tag tag = new Tag(m);
-				s.Replace(m.Value, tag.Parse());
+				s = s.Replace(m.Value, tag.Parse());
 			}
 
 			return s;

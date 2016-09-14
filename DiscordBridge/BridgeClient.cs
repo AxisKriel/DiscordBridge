@@ -156,7 +156,8 @@ namespace DiscordBridge
 				Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
 
 				string name = String.IsNullOrWhiteSpace(_main.Config.CustomNameFormat) ? e.User.Name
-					: String.Format(_main.Config.CustomNameFormat, topRole.Name, e.User.Name);
+					: String.Format(_main.Config.CustomNameFormat, topRole.Name, e.User.Name,
+					String.IsNullOrWhiteSpace(e.User.Nickname) ? e.User.Name : e.User.Nickname);
 
 				// Colorize name
 				if (_main.Config.UseColoredNames)

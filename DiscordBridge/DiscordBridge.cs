@@ -36,6 +36,8 @@ namespace DiscordBridge
 				ServerApi.Hooks.GamePostInitialize.Deregister(this, onPostInitialize);
 
 				PlayerHooks.PlayerChat -= onChat;
+
+				Client.Dispose();
 			}
 		}
 
