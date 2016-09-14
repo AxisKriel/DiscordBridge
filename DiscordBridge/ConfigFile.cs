@@ -16,7 +16,7 @@ namespace DiscordBridge
 		protected class Contents
 		{
 			public string BotToken;
-			public string[] TerrariaChannels = new[] { "#terraria" };
+			public string[] TerrariaChannels = new[] { "terraria" };
 			public string MinimumRoleToBroadcast = "";
 
 			public string DiscordChatFormat = "[c/00ffb9:Discord @] {0}[c/00ffb9::] {1}";
