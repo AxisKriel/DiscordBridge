@@ -1,0 +1,39 @@
+﻿using System.Collections.Generic;
+using TShockAPI;
+
+namespace DiscordBridge.Chat
+{
+	public class ChatMessage
+	{
+		public class Section
+		{
+			public Color? Color { get; set; }
+
+			public string Text { get; set; }
+
+			public override string ToString()
+			{
+				if (!Color.HasValue)
+					return Text;
+				else
+					return TShock.Utils.ColorTag(Text, Color.Value);
+			}
+		}
+
+		public Color? Color { get; set; }
+
+		public Section Header { get; set; }
+
+		public Section Name { get; set; }
+
+		public List<Section> Prefixes { get; set; } = new List<Section>();
+
+		public string PrefixSeparator { get; set; } = " ";
+
+		public List<Section> Suffixes { get; set; } = new List<Section>();
+
+		public string SuffixSeparator { get; set; } = " ";
+
+		public string Text { get; set; }
+	}
+}

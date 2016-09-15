@@ -5,12 +5,12 @@ using System.Text;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Commands;
+using DiscordBridge.Chat;
 using DiscordBridge.Extensions;
 using DiscordBridge.Framework;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
-using TShockAPI.Hooks;
 using TSCommand = TShockAPI.Command;
 
 namespace DiscordBridge
@@ -19,6 +19,13 @@ namespace DiscordBridge
 	public partial class DiscordBridge : TerrariaPlugin
 	{
 		public override string Author => "Enerdy";
+
+		/// <summary>
+		/// The purpose of ChatHandler is to take away TShock's control over chat so that it may be formatted properly.
+		/// Any plugin that wishes to modify chat in any way must hook to <see cref="ChatHandler.PlayerChatting"/> and use
+		/// the <see cref="ChatMessageBuilder"/> methods to modify its Message property.
+		/// </summary>
+		public ChatHandler ChatHandler { get; }
 
 		public BridgeClient Client { get; private set; }
 
@@ -32,6 +39,7 @@ namespace DiscordBridge
 
 		public DiscordBridge(Main game) : base(game)
 		{
+			ChatHandler = new ChatHandler();
 		}
 
 		protected override void Dispose(bool disposing)
@@ -41,7 +49,11 @@ namespace DiscordBridge
 				ServerApi.Hooks.GameInitialize.Deregister(this, onInitialize);
 				ServerApi.Hooks.GamePostInitialize.Deregister(this, onPostInitialize);
 
-				PlayerHooks.PlayerChat -= onChat;
+				ServerApi.Hooks.NetGreetPlayer.Deregister(this, onGreet);
+				ServerApi.Hooks.ServerChat.Deregister(this, ChatHandler.Handle);
+				ServerApi.Hooks.ServerLeave.Deregister(this, onLeave);
+
+				ChatHandler.PlayerChatted -= onChat;
 
 				Client.Dispose();
 			}
@@ -52,14 +64,15 @@ namespace DiscordBridge
 			ServerApi.Hooks.GameInitialize.Register(this, onInitialize);
 			ServerApi.Hooks.GamePostInitialize.Register(this, onPostInitialize);
 
-			PlayerHooks.PlayerChat += onChat;
+			ServerApi.Hooks.NetGreetPlayer.Register(this, onGreet);
+			ServerApi.Hooks.ServerChat.Register(this, ChatHandler.Handle, 1);
+			ServerApi.Hooks.ServerLeave.Register(this, onLeave);
+
+			ChatHandler.PlayerChatted += onChat;;
 		}
 
-		private async void onChat(PlayerChatEventArgs e)
+		private async void onChat(object sender, PlayerChattedEventArgs e)
 		{
-			if (e.Handled)
-				return;
-
 			if (Client.State == ConnectionState.Connected)
 			{
 				// Todo: figure out multi server chat here
@@ -68,7 +81,7 @@ namespace DiscordBridge
 					Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
 					if (c != null)
 					{
-						Message m = await c.SendMessage(e.TShockFormattedText.StripTags());
+						Message m = await c.SendMessage(e.Message.ToString().StripTags());
 						if (m.State == MessageState.Failed)
 						{
 							TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");
@@ -78,9 +91,33 @@ namespace DiscordBridge
 			}
 		}
 
+		private async void onGreet(GreetPlayerEventArgs e)
+		{
+			if (e.Handled)
+				return;
+
+			try
+			{
+				TSPlayer p = TShock.Players[e.Who];
+				if (p != null)
+				{
+					foreach (string s in Config.TerrariaChannels)
+					{
+						Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
+						if (c != null)
+						{
+							await c.SendMessage($"`{p.Name}` has joined.");
+						}
+					}
+				}
+			}
+			catch { }
+		}
+
 		private void onInitialize(EventArgs args)
 		{
 			Config = ConfigFile.Read();
+			ChatHandler.StripTagsFromConsole = Config.StripTagsFromConsole;
 
 			Commands.ChatCommands.Add(new TSCommand(Permissions.Use, doDiscord, "bridge", "discord"));
 
@@ -107,7 +144,7 @@ namespace DiscordBridge
 					if (player == null)
 					{
 						await e.User.SendMessage("You must be logged in to use TShock commands.");
-						await e.User.SendMessage("Message me with `login <username> <password>` using your TShock credentials to begin.");
+						await e.User.SendMessage($"Message me with `{Config.BotPrefix}login <username> <password>` using your TShock credentials to begin.");
 						return;
 					}
 
@@ -139,7 +176,10 @@ namespace DiscordBridge
 					if (!e.GetArg("command").StartsWith(Commands.Specifier) && !e.GetArg("command").StartsWith(Commands.Specifier))
 						sb.Append(Commands.Specifier);
 
+					// Temporarily set their command channel so that messages end in the right place
+					player.CommandChannel = e.Channel;
 					Commands.HandleCommand(player, sb.Append(e.GetArg("command")).Append(' ').Append(e.GetArg("parameters")).ToString());
+					player.CommandChannel = null;
 				});
 
 			Client.GetService<CommandService>().CreateCommand("login")
@@ -150,7 +190,7 @@ namespace DiscordBridge
 				{
 					if (Client[e.User] != null)
 					{
-						await e.User.SendMessage("You are already logged in. Use `logout` first if you wish to log in to a different account.");
+						await e.User.SendMessage($"You are already logged in. Use `{Config.BotPrefix}logout` first if you wish to log in to a different account.");
 						return;
 					}
 
@@ -193,6 +233,26 @@ namespace DiscordBridge
 				});
 
 			#endregion
+		}
+
+		private async void onLeave(LeaveEventArgs e)
+		{
+			try
+			{
+				TSPlayer p = TShock.Players[e.Who];
+				if (p != null)
+				{
+					foreach (string s in Config.TerrariaChannels)
+					{
+						Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
+						if (c != null)
+						{
+							await c.SendMessage($"`{p.Name}` has left.");
+						}
+					}
+				}
+			}
+			catch { }
 		}
 
 		private async void onPostInitialize(EventArgs e)

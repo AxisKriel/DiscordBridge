@@ -78,6 +78,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Chat\ChatHandler.cs" />
+    <Compile Include="Chat\ChatMessage.cs" />
+    <Compile Include="Chat\ChatMessageBuilder.cs" />
+    <Compile Include="Chat\PlayerChattedEventArgs.cs" />
+    <Compile Include="Chat\PlayerChattingEventArgs.cs" />
     <Compile Include="Framework\BridgeClient.cs" />
     <Compile Include="Commands.cs" />
     <Compile Include="ConfigFile.cs" />

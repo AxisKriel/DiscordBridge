@@ -20,7 +20,8 @@ namespace DiscordBridge
 			public string[] TerrariaChannels = new[] { "terraria" };
 			public string MinimumRoleToBroadcast = "";
 
-			public string DiscordChatFormat = "[c/00ffb9:Discord @] {0}[c/00ffb9::] {1}";
+			public bool StripTagsFromConsole = true;
+			public string DiscordChatFormat = "[c/00ffb9:Discord>] {0}[c/00ffb9::] {1}";
 			public bool UseColoredNames = true;
 			public string CustomNameFormat = "<{0}> {1}";
 		}
@@ -59,6 +60,20 @@ namespace DiscordBridge
 			set
 			{
 				Data.TerrariaChannels = value;
+				save();
+			}
+		}
+
+		/// <summary>
+		/// Whether or not to remove all tags from chat messages when read in the console.
+		/// Improves readability but prevents you from reading exactly what is being sent.
+		/// </summary>
+		public bool StripTagsFromConsole
+		{
+			get { return Data.StripTagsFromConsole; }
+			set
+			{
+				Data.StripTagsFromConsole = value;
 				save();
 			}
 		}
