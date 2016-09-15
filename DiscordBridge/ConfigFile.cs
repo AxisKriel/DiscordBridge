@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using System.IO;
 using TShockAPI;
 
 namespace DiscordBridge
@@ -15,6 +15,7 @@ namespace DiscordBridge
 
 		protected class Contents
 		{
+			public char BotPrefix = '!';
 			public string BotToken;
 			public string[] TerrariaChannels = new[] { "terraria" };
 			public string MinimumRoleToBroadcast = "";
@@ -25,6 +26,16 @@ namespace DiscordBridge
 		}
 
 		protected Contents Data = new Contents();
+
+		public char BotPrefix
+		{
+			get { return Data.BotPrefix; }
+			set
+			{
+				Data.BotPrefix = value;
+				save();
+			}
+		}
 
 		/// <summary>
 		/// The bot token used for connecting to this bot.

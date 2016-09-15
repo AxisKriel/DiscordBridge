@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 using Discord;
 using DiscordBridge.Extensions;
 using TShockAPI;
-using TSUser = TShockAPI.DB.User;
 
-namespace DiscordBridge
+namespace DiscordBridge.Framework
 {
 	public class BridgeClient : DiscordClient
 	{
@@ -20,13 +19,12 @@ namespace DiscordBridge
 		/// </summary>
 		public Server CurrentServer => Servers.FirstOrDefault();
 
-		protected Dictionary<User, TSUser> LoggedUsers { get; }
+		protected Dictionary<ulong, BridgeUser> LoggedUsers { get; }
 
 		internal BridgeClient()
 		{
-			LoggedUsers = new Dictionary<User, TSUser>();
+			LoggedUsers = new Dictionary<ulong, BridgeUser>();
 
-			JoinedServer += onServerJoin;
 			MessageReceived += onMessageReceived;
 		}
 
@@ -39,7 +37,6 @@ namespace DiscordBridge
 		{
 			if (isDisposing)
 			{
-				JoinedServer -= onServerJoin;
 				MessageReceived -= onMessageReceived;
 
 				if (State == ConnectionState.Connected)
@@ -51,27 +48,27 @@ namespace DiscordBridge
 		}
 
 		/// <summary>
-		/// Gets or sets the <see cref="TSUser"/> associated with a given discord user.
+		/// Gets or sets the <see cref="BridgeUser"/> associated with a given discord user.
 		/// If a user has not logged in to a TShock user, this will return <see cref="null"/>.
 		/// Likewise, setting a value to <see cref="null"/> is the same as logging off an account.
 		/// </summary>
 		/// <param name="u">The discord user.</param>
-		/// <returns>The associated TShock user, or the compiler default if the user is not logged in.</returns>
-		public TSUser this[User u]
+		/// <returns>The associated Bridge player object, or the compiler default if the user is not logged in.</returns>
+		public BridgeUser this[User u]
 		{
 			get
 			{
-				if (!LoggedUsers.ContainsKey(u))
+				if (!LoggedUsers.ContainsKey(u.Id))
 					return null;
 
-				return LoggedUsers[u];
+				return LoggedUsers[u.Id];
 			}
 			set
 			{
 				if (value == null)
-					LoggedUsers.Remove(u);
+					LoggedUsers.Remove(u.Id);
 				else
-					LoggedUsers[u] = value;
+					LoggedUsers[u.Id] = value;
 			}
 		}
 
@@ -121,14 +118,6 @@ namespace DiscordBridge
 		}
 
 		#region Handlers
-
-		private void onServerJoin(object sender, ServerEventArgs e)
-		{
-			TShock.Utils.Broadcast(String.Format("{0} has joined the discord server {1}.",
-				TShock.Utils.ColorTag(CurrentUser.Name, new Color(0, 255, 185)),
-				TShock.Utils.ColorTag(CurrentUser.Name, new Color(0, 255, 0))),
-				Color.Yellow);
-		}
 
 		private void onMessageReceived(object sender, MessageEventArgs e)
 		{

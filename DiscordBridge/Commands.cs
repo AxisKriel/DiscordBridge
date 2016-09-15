@@ -56,7 +56,7 @@ namespace DiscordBridge
 				case "connect":
 					if (!e.Player.HasPermission(Permissions.Reconnect))
 					{
-						e.Player.SendErrorMessage("You don't have access to this command.");
+						e.Player.SendErrorMessage("You do not have access to this command.");
 						return;
 					}
 
@@ -67,7 +67,7 @@ namespace DiscordBridge
 				case "accept-invite":
 					if (!e.Player.HasPermission(Permissions.AcceptInvite))
 					{
-						e.Player.SendErrorMessage("You don't have access to this command.");
+						e.Player.SendErrorMessage("You do not have access to this command.");
 						return;
 					}
 
@@ -79,7 +79,7 @@ namespace DiscordBridge
 				case "reload-config":
 					if (!e.Player.HasPermission(Permissions.ReloadConfig))
 					{
-						e.Player.SendErrorMessage("You don't have access to this command.");
+						e.Player.SendErrorMessage("You do not have access to this command.");
 						return;
 					}
 
@@ -91,7 +91,7 @@ namespace DiscordBridge
 				case "set-token":
 					if (!e.Player.HasPermission(Permissions.SetBotToken))
 					{
-						e.Player.SendErrorMessage("You don't have access to this command.");
+						e.Player.SendErrorMessage("You do not have access to this command.");
 						return;
 					}
 
