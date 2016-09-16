@@ -11,21 +11,21 @@ namespace DiscordBridge.Chat
 		/// <summary>
 		/// Occurs just before chat is broadcasted to players.
 		/// </summary>
-		public event EventHandler<PlayerChattingEventArgs> PlayerChatting;
+		public static event EventHandler<PlayerChattingEventArgs> PlayerChatting;
 
 		/// <summary>
 		/// Occurs after chat has been broadcasted.
 		/// </summary>
-		public event EventHandler<PlayerChattedEventArgs> PlayerChatted;
+		public static event EventHandler<PlayerChattedEventArgs> PlayerChatted;
 
-		public bool StripTagsFromConsole { get; set; }
+		internal bool StripTagsFromConsole { get; set; }
 
 		public ChatMessageBuilder CreateMessage(string format)
 		{
 			return new ChatMessageBuilder().SetFormat(format);
 		}
 
-		public void Handle(ServerChatEventArgs e)
+		internal void Handle(ServerChatEventArgs e)
 		{
 			if (e.Handled)
 				return;

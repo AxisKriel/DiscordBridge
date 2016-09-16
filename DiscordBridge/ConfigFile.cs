@@ -27,6 +27,7 @@ namespace DiscordBridge
 
 			public string GameChatFormat = "[c/00ffb9:Discord>] {0}[c/00ffb9::] {1}";
 			public bool UseColoredNames = true;
+			public bool UseTShockColors = true;
 			public string CustomNameFormat = "<{0}> {2}";
 
 			public ServerBot[] OtherServerBots = new[] { new ServerBot() };
@@ -150,6 +151,19 @@ namespace DiscordBridge
 			set
 			{
 				Data.UseColoredNames = value;
+				save();
+			}
+		}
+
+		/// <summary>
+		/// If <see cref="UseColoredNames"/> is true and the user is logged in, use their group color over role.
+		/// </summary>
+		public bool UseTShockColors
+		{
+			get { return Data.UseTShockColors; }
+			set
+			{
+				Data.UseTShockColors = value;
 				save();
 			}
 		}

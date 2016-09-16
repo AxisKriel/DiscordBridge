@@ -71,7 +71,7 @@ namespace DiscordBridge.Extensions
 				Text = text;
 			}
 
-			public string Parse()
+			public string Parse(bool quotes = false)
 			{
 				switch (_type)
 				{
@@ -87,7 +87,10 @@ namespace DiscordBridge.Extensions
 					case Type.Item:
 						Item item = TShock.Utils.GetItemFromTag(_raw);
 						string stack = item.stack > 1 ? $"{item.stack} " : "";
-						return $"{stack}{item.AffixName()}";
+						if (quotes)
+							return $"`{stack}{item.AffixName()}`";
+						else
+							return $"{stack}{item.AffixName()}";
 				}
 			}
 
@@ -100,8 +103,12 @@ namespace DiscordBridge.Extensions
 		/// Achievement, Player and Item tags are changed to their respective names.
 		/// </summary>
 		/// <param name="s">The string to strip tags from (normally a Terraria chat message).</param>
+		/// <param name="quoteResult">
+		/// Whether or not to quote the resulting text with backticks (`), if any.
+		/// Useful if the message is being displayed in a client that supports markdown.
+		/// </param>
 		/// <returns>A string with no chat tags.</returns>
-		public static string StripTags(this string s)
+		public static string StripTags(this string s, bool quoteResult = false)
 		{
 			// Source: Terraria
 			var regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
@@ -110,7 +117,7 @@ namespace DiscordBridge.Extensions
 			foreach (Match m in matches)
 			{
 				Tag tag = new Tag(m);
-				s = s.Replace(m.Value, tag.Parse());
+				s = s.Replace(m.Value, tag.Parse(quoteResult));
 			}
 
 			return s;

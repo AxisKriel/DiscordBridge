@@ -71,13 +71,12 @@ namespace DiscordBridge
 		{
 			if (Client.State == ConnectionState.Connected)
 			{
-				// Todo: figure out multi server chat here
 				foreach (string s in Config.TerrariaChannels)
 				{
 					Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
 					if (c != null)
 					{
-						Message m = await c.SendMessage(e.Message.ToString().StripTags());
+						Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().StripTags(true));
 						if (m.State == MessageState.Failed)
 						{
 							TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");

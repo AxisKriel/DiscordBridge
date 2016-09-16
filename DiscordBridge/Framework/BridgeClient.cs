@@ -82,7 +82,7 @@ namespace DiscordBridge.Framework
 					// Do everything that needs to be done when the bot connects to the server here
 
 					if (CurrentGame.Name != "Terraria")
-						SetGame(new Game("Terraria", GameType.Default, "http://sbplanet.co/"));
+						SetGame(new Game("Terraria", GameType.Default, "https://terraria.org"));
 				}
 			}
 		}
@@ -124,6 +124,14 @@ namespace DiscordBridge.Framework
 			if (e.Message.IsAuthor)
 				return;
 
+			// Ignore commands
+			if (e.Message.IsMentioningMe() || e.Message.Text.TrimStart()[0] == _main.Config.BotPrefix)
+				return;
+
+			// We don't need to process attachments; in fact, this crashes the server
+			if (e.Message.Attachments.Length > 0 || e.Message.Embeds.Length > 0)
+				return;
+
 			if (e.Channel.IsPrivate)
 			{
 				if (e.User.IsBot && _main.Config.OtherServerBots.Exists(b => b.Id == e.User.Id))
@@ -142,10 +150,6 @@ namespace DiscordBridge.Framework
 			}
 			else
 			{
-				// Ignore commands
-				if (e.Message.Text.TrimStart()[0] == _main.Config.BotPrefix)
-					return;
-
 				// Only broadcast non-self messages sent in game channels
 				if (_main.Config.TerrariaChannels.Contains(e.Channel.Name))
 				{
@@ -169,7 +173,7 @@ namespace DiscordBridge.Framework
 
 					Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
 					string roleName = topRole.IsEveryone ? _main.Config.DefaultRoleName : topRole.Name;
-					Color roleColor = topRole.IsEveryone ? Color.White : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
+					Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
 
 					string name = String.IsNullOrWhiteSpace(_main.Config.CustomNameFormat) ? e.User.Name
 						: String.Format(_main.Config.CustomNameFormat, roleName, e.User.Name,
@@ -177,7 +181,13 @@ namespace DiscordBridge.Framework
 
 					// Colorize name
 					if (_main.Config.UseColoredNames)
-						name = TShock.Utils.ColorTag(name, roleColor);
+					{
+						BridgeUser user;
+						if (_main.Config.UseTShockColors && (user = this[e.User]) != null)
+							name = TShock.Utils.ColorTag(name, new Color(user.Group.R, user.Group.G, user.Group.B));
+						else
+							name = TShock.Utils.ColorTag(name, roleColor);
+					}
 
 					string text = String.Format(_main.Config.GameChatFormat, name, e.Message.Text);
 
