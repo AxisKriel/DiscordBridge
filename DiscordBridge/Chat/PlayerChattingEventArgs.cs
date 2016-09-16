@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using TShockAPI;
 
 namespace DiscordBridge.Chat
@@ -17,7 +13,7 @@ namespace DiscordBridge.Chat
 
 		public PlayerChattingEventArgs(string text)
 		{
-			Message = new ChatMessageBuilder().SetFormat("{4}").SetText(text);
+			Message = ChatHandler.CreateMessage("{4}").SetText(text);
 			RawText = text;
 		}
 

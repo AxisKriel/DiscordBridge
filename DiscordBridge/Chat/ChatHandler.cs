@@ -20,7 +20,7 @@ namespace DiscordBridge.Chat
 
 		internal bool StripTagsFromConsole { get; set; }
 
-		public ChatMessageBuilder CreateMessage(string format)
+		public static ChatMessageBuilder CreateMessage(string format)
 		{
 			return new ChatMessageBuilder().SetFormat(format);
 		}

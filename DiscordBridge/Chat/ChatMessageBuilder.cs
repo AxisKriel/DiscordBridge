@@ -50,7 +50,7 @@ namespace DiscordBridge.Chat
 		/// <summary>
 		/// Initializes a new instance of the <see cref="ChatMessageBuilder"/> class.
 		/// </summary>
-		public ChatMessageBuilder()
+		internal ChatMessageBuilder()
 		{
 			_message = new ChatMessage();
 			Format = DefaultChatFormat;

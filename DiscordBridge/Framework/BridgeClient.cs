@@ -124,78 +124,88 @@ namespace DiscordBridge.Framework
 			if (e.Message.IsAuthor)
 				return;
 
-			// Ignore commands
-			if (e.Message.IsMentioningMe() || e.Message.Text.TrimStart()[0] == _main.Config.BotPrefix)
-				return;
-
-			// We don't need to process attachments; in fact, this crashes the server
-			if (e.Message.Attachments.Length > 0 || e.Message.Embeds.Length > 0)
-				return;
-
-			if (e.Channel.IsPrivate)
+			try
 			{
-				if (e.User.IsBot && _main.Config.OtherServerBots.Exists(b => b.Id == e.User.Id))
-				{
-					// Message is Multi-Server Broadcast
-					TSPlayer.All.SendMessage(e.Message.Text, Color.White);
+				// Ignore commands
+				if (e.Message.IsMentioningMe() || e.Message.Text.StartsWith(_main.Config.BotPrefix.ToString()))
+					return;
 
-					// Strip tags when sending to console
-					TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), Color.White);
+				// We don't need to process attachments; in fact, this crashes the server
+				if (e.Message.Attachments.Length > 0 || e.Message.Embeds.Length > 0)
+					return;
+
+				if (e.Channel.IsPrivate)
+				{
+					if (e.User.IsBot && _main.Config.OtherServerBots.Exists(b => b.Id == e.User.Id))
+					{
+						// Message is Multi-Server Broadcast
+						TSPlayer.All.SendMessage(e.Message.Text, Color.White);
+
+						// Strip tags when sending to console
+						TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), Color.White);
+					}
+					else
+					{
+						// Because I don't feel like making a custom handler, tell users to use the prefix
+						await e.Channel.SendMessage($"Type `{_main.Config.BotPrefix}help` for a list of available commands.");
+					}
 				}
 				else
 				{
-					// Because I don't feel like making a custom handler, tell users to use the prefix
-					await e.Channel.SendMessage($"Type `{_main.Config.BotPrefix}help` for a list of available commands.");
-				}
-			}
-			else
-			{
-				// Only broadcast non-self messages sent in game channels
-				if (_main.Config.TerrariaChannels.Contains(e.Channel.Name))
-				{
-					if (!String.IsNullOrWhiteSpace(_main.Config.MinimumRoleToBroadcast))
+					// Only broadcast non-self messages sent in game channels
+					if (_main.Config.TerrariaChannels.Contains(e.Channel.Name))
 					{
-						// Check for talk permission based on role
-						Role role = e.Server.FindRoles(_main.Config.MinimumRoleToBroadcast, true).FirstOrDefault();
-
-						// If role is null, incorrect setup, so disregard (should probably notify the log, however...)
-						if (role != null && !e.User.Roles.Contains(role))
+						if (!String.IsNullOrWhiteSpace(_main.Config.MinimumRoleToBroadcast))
 						{
-							// If the user doesn't have the set role, check role positions
-							int highestRolePosition = e.User.Roles.OrderBy(r => r.Position).Last().Position;
-							if (highestRolePosition < role.Position)
+							// Check for talk permission based on role
+							Role role = e.Server.FindRoles(_main.Config.MinimumRoleToBroadcast, true).FirstOrDefault();
+
+							// If role is null, incorrect setup, so disregard (should probably notify the log, however...)
+							if (role != null && !e.User.Roles.Contains(role))
 							{
-								// Todo: notify the user that their messages are not being broadcasted, but only nag them once
-								return;
+								// If the user doesn't have the set role, check role positions
+								int highestRolePosition = e.User.Roles.OrderBy(r => r.Position).Last().Position;
+								if (highestRolePosition < role.Position)
+								{
+									// Todo: notify the user that their messages are not being broadcasted, but only nag them once
+									return;
+								}
 							}
 						}
+
+						Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
+						string roleName = topRole.IsEveryone ? _main.Config.DefaultRoleName : topRole.Name;
+						Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
+
+						string name = String.IsNullOrWhiteSpace(_main.Config.CustomNameFormat) ? e.User.Name
+							: String.Format(_main.Config.CustomNameFormat, roleName, e.User.Name,
+							String.IsNullOrWhiteSpace(e.User.Nickname) ? e.User.Name : e.User.Nickname);
+
+						// Colorize name
+						if (_main.Config.UseColoredNames)
+						{
+							BridgeUser user;
+							if (_main.Config.UseTShockColors && (user = this[e.User]) != null)
+								name = TShock.Utils.ColorTag(name, new Color(user.Group.R, user.Group.G, user.Group.B));
+							else
+								name = TShock.Utils.ColorTag(name, roleColor);
+						}
+
+						string text = String.Format(_main.Config.GameChatFormat, name, e.Message.Text);
+
+						TSPlayer.All.SendMessage(text, Color.White);
+
+						// Strip tags when sending to console
+						TSPlayer.Server.SendMessage(text.StripTags(), Color.White);
 					}
-
-					Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
-					string roleName = topRole.IsEveryone ? _main.Config.DefaultRoleName : topRole.Name;
-					Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
-
-					string name = String.IsNullOrWhiteSpace(_main.Config.CustomNameFormat) ? e.User.Name
-						: String.Format(_main.Config.CustomNameFormat, roleName, e.User.Name,
-						String.IsNullOrWhiteSpace(e.User.Nickname) ? e.User.Name : e.User.Nickname);
-
-					// Colorize name
-					if (_main.Config.UseColoredNames)
-					{
-						BridgeUser user;
-						if (_main.Config.UseTShockColors && (user = this[e.User]) != null)
-							name = TShock.Utils.ColorTag(name, new Color(user.Group.R, user.Group.G, user.Group.B));
-						else
-							name = TShock.Utils.ColorTag(name, roleColor);
-					}
-
-					string text = String.Format(_main.Config.GameChatFormat, name, e.Message.Text);
-
-					TSPlayer.All.SendMessage(text, Color.White);
-
-					// Strip tags when sending to console
-					TSPlayer.Server.SendMessage(text.StripTags(), Color.White);
 				}
+			}
+			catch
+			{
+				/* All exceptions are caught here to avoid crashes. Task life ain't easy, heh?
+				 * Seeing as the main purpose of this handler is to relay messages, it won't mind
+				 * missing on one or two messages from time to time, specially when said messages
+				 * are usually the irregular ones. */
 			}
 		}
 
