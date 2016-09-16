@@ -148,6 +148,12 @@ namespace DiscordBridge
 						return;
 					}
 
+					if (Config.OtherServerBots.Exists(b => b.Id == botUser.Id))
+					{
+						await e.Channel.SendMessage($"`{e.GetArg("name")}` is already on the broadcast is.");
+						return;
+					}
+
 					// Because ConfigFile only saves when directly setting a member, we need to re-set the entire list here
 					var bots = new List<ConfigFile.ServerBot>(Config.OtherServerBots);
 					bots.Add(new ConfigFile.ServerBot { Id = botUser.Id });
