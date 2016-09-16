@@ -139,10 +139,10 @@ namespace DiscordBridge.Framework
 					if (e.User.IsBot && _main.Config.OtherServerBots.Exists(b => b.Id == e.User.Id))
 					{
 						// Message is Multi-Server Broadcast
-						TSPlayer.All.SendMessage(e.Message.Text, Color.White);
+						TSPlayer.All.SendMessage(e.Message.RawText, Color.White);
 
 						// Strip tags when sending to console
-						TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), Color.White);
+						TSPlayer.Server.SendMessage(e.Message.RawText.StripTags(), Color.White);
 					}
 					else
 					{
@@ -150,6 +150,11 @@ namespace DiscordBridge.Framework
 						await e.Channel.SendMessage($"Type `{_main.Config.BotPrefix}help` for a list of available commands.");
 					}
 				}
+
+				// We don't want to broadcast what other bots are saying; when we do, we use multi-server chat
+				else if (e.User.IsBot)
+					return;
+
 				else
 				{
 					// Only broadcast non-self messages sent in game channels
@@ -191,7 +196,7 @@ namespace DiscordBridge.Framework
 								name = TShock.Utils.ColorTag(name, roleColor);
 						}
 
-						string text = String.Format(_main.Config.GameChatFormat, name, e.Message.Text);
+						string text = String.Format(_main.Config.GameChatFormat, name, e.Message.RawText);
 
 						TSPlayer.All.SendMessage(text, Color.White);
 
