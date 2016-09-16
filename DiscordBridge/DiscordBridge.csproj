@@ -83,8 +83,9 @@
     <Compile Include="Chat\ChatMessageBuilder.cs" />
     <Compile Include="Chat\PlayerChattedEventArgs.cs" />
     <Compile Include="Chat\PlayerChattingEventArgs.cs" />
+    <Compile Include="DiscordCommands.cs" />
     <Compile Include="Framework\BridgeClient.cs" />
-    <Compile Include="Commands.cs" />
+    <Compile Include="TShockCommands.cs" />
     <Compile Include="ConfigFile.cs" />
     <Compile Include="DiscordBridge.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />

@@ -19,11 +19,32 @@ namespace DiscordBridge
 			public string BotToken;
 			public string[] TerrariaChannels = new[] { "terraria" };
 			public string MinimumRoleToBroadcast = "";
+			public string DefaultRoleName = "Player";
 
 			public bool StripTagsFromConsole = true;
-			public string DiscordChatFormat = "[c/00ffb9:Discord>] {0}[c/00ffb9::] {1}";
+
+			public string DiscordChatFormat = "**<{1}> {2}{3}:** {4}";
+
+			public string GameChatFormat = "[c/00ffb9:Discord>] {0}[c/00ffb9::] {1}";
 			public bool UseColoredNames = true;
-			public string CustomNameFormat = "<{0}> {1}";
+			public string CustomNameFormat = "<{0}> {2}";
+
+			public ServerBot[] OtherServerBots = new[] { new ServerBot() };
+		}
+
+		public class ServerBot
+		{
+			/// <summary>
+			/// The bot's application identifier.
+			/// </summary>
+			public ulong Id { get; set; }
+
+			/// <summary>
+			/// How to format messages before sending them to this bot:
+			/// {0} - Header (set to bot nick), {1} - Prefixes, {2} - Sender, {3} - Suffixes, {4} - Message Body,
+			/// {5} - Message color in hex, {6} - Header color in hex, {7} - Name color in hex
+			/// </summary>
+			public string OutgoingFormat { get; set; } = "{0}> <{1}> {2}{3}[c/{7}::] {4}";
 		}
 
 		protected Contents Data = new Contents();
@@ -65,6 +86,19 @@ namespace DiscordBridge
 		}
 
 		/// <summary>
+		/// The name that should be used for users without a role (@everyone).
+		/// </summary>
+		public string DefaultRoleName
+		{
+			get { return Data.DefaultRoleName; }
+			set
+			{
+				Data.DefaultRoleName = value;
+				save();
+			}
+		}
+
+		/// <summary>
 		/// Whether or not to remove all tags from chat messages when read in the console.
 		/// Improves readability but prevents you from reading exactly what is being sent.
 		/// </summary>
@@ -79,9 +113,8 @@ namespace DiscordBridge
 		}
 
 		/// <summary>
-		/// Tells the bot how to format messages before they're broadcasted.
-		/// {0} - Name (can be modified with <see cref="CustomNameFormat"/>);
-		/// {1} - Text.
+		/// Tells the bot how to format messages being sent from in-game to the Discord channel:
+		/// {0} - Header, {1} - Prefixes, {2} - Sender, {3} - Suffixes, {4} - Message Body
 		/// </summary>
 		public string DiscordChatFormat
 		{
@@ -89,6 +122,21 @@ namespace DiscordBridge
 			set
 			{
 				Data.DiscordChatFormat = value;
+				save();
+			}
+		}
+
+		/// <summary>
+		/// Tells the bot how to format messages before they're broadcasted to the game.
+		/// {0} - Name (can be modified with <see cref="CustomNameFormat"/>);
+		/// {1} - Text.
+		/// </summary>
+		public string GameChatFormat
+		{
+			get { return Data.GameChatFormat; }
+			set
+			{
+				Data.GameChatFormat = value;
 				save();
 			}
 		}
@@ -107,11 +155,11 @@ namespace DiscordBridge
 		}
 
 		/// <summary>
-		/// Modifies how the name parameter works in <see cref="DiscordChatFormat"/>.
+		/// Modifies how the name parameter works in <see cref="GameChatFormat"/>.
 		/// If not set, defaults to "Name".
 		/// {0} - User role;
 		/// {1} - User name.
-		/// {2} - User nickname on the server.
+		/// {2} - User nickname (or name if non-existant) on the server.
 		/// </summary>
 		public string CustomNameFormat
 		{
@@ -133,6 +181,22 @@ namespace DiscordBridge
 			set
 			{
 				Data.MinimumRoleToBroadcast = value;
+				save();
+			}
+		}
+
+		/// <summary>
+		/// A list of other Discord Bridge bots added by the '!addbot' command.
+		/// This bot will broadcast all messages received from the game to every bot on this list
+		/// following their <see cref="ServerBot.OutgoingFormat"/>, as well as transmit everything
+		/// received from them to the game.
+		/// </summary>
+		public List<ServerBot> OtherServerBots
+		{
+			get { return new List<ServerBot>(Data.OtherServerBots); }
+			set
+			{
+				Data.OtherServerBots = value.ToArray();
 				save();
 			}
 		}
