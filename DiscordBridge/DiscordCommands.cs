@@ -135,7 +135,8 @@ namespace DiscordBridge
 				{
 					User botUser = Client.CurrentServer.FindUsers(e.GetArg("name"), true).FirstOrDefault();
 
-					if (botUser == null)
+					if (botUser == null
+					&& (botUser = Client.CurrentServer.Users.FirstOrDefault(u => u.Nickname.Equals(e.GetArg("name"), StringComparison.OrdinalIgnoreCase))) == null)
 					{
 						await e.Channel.SendMessage($"User `{e.GetArg("name")}` is not on this server.");
 						return;
