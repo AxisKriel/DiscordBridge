@@ -20,11 +20,11 @@ namespace DiscordBridge.Framework
 		/// </summary>
 		public Server CurrentServer => Servers.FirstOrDefault();
 
-		protected Dictionary<ulong, BridgeUser> LoggedUsers { get; }
+		protected Dictionary<ulong, BridgeUser> Users { get; }
 
 		internal BridgeClient()
 		{
-			LoggedUsers = new Dictionary<ulong, BridgeUser>();
+			Users = new Dictionary<ulong, BridgeUser>();
 
 			MessageReceived += onMessageReceived;
 		}
@@ -49,28 +49,34 @@ namespace DiscordBridge.Framework
 		}
 
 		/// <summary>
-		/// Gets or sets the <see cref="BridgeUser"/> associated with a given discord user.
-		/// If a user has not logged in to a TShock user, this will return <see cref="null"/>.
-		/// Likewise, setting a value to <see cref="null"/> is the same as logging off an account.
+		/// Gets or sets the <see cref="BridgeUser"/> associated with the given discord user identity.
 		/// </summary>
-		/// <param name="u">The discord user.</param>
-		/// <returns>The associated Bridge player object, or the compiler default if the user is not logged in.</returns>
-		public BridgeUser this[User u]
+		/// <param name="id">The discord user Id.</param>
+		/// <returns>The associated Bridge player object.</returns>
+		public BridgeUser this[ulong id]
 		{
 			get
 			{
-				if (!LoggedUsers.ContainsKey(u.Id))
+				if (!Users.ContainsKey(id))
 					return null;
 
-				return LoggedUsers[u.Id];
+				return Users[id];
 			}
 			set
 			{
-				if (value == null)
-					LoggedUsers.Remove(u.Id);
-				else
-					LoggedUsers[u.Id] = value;
+				Users[id] = value;
 			}
+		}
+
+		/// <summary>
+		/// Gets or sets the <see cref="BridgeUser"/> associated with a given discord user.
+		/// </summary>
+		/// <param name="u">The discord user.</param>
+		/// <returns>The associated Bridge player object.</returns>
+		public BridgeUser this[User u]
+		{
+			get { return this[u.Id]; }
+			set { Users[u.Id] = value; }
 		}
 
 		public async Task StartUp()
@@ -183,11 +189,19 @@ namespace DiscordBridge.Framework
 						Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
 						Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
 
+						if (this[e.User] == null)
+						{
+							if (_main.Config.RememberLogins)
+								await _main.Logins.Authenticate(e.User.Id);
+							else
+								this[e.User] = new BridgeUser(e.User);
+						}
+
 						// Setting up the color dictionary - if there is need for more colors, they may be added later
 						var colorDictionary = new Dictionary<string, Color?>
 						{
 							["Role"] = roleColor,
-							["Group"] = this[e.User] != null ? new Color(this[e.User].Group.R, this[e.User].Group.G, this[e.User].Group.B) : roleColor,
+							["Group"] = this[e.User].IsLoggedIn ? new Color(this[e.User].Group.R, this[e.User].Group.G, this[e.User].Group.B) : roleColor,
 						};
 
 						#region Format Colors

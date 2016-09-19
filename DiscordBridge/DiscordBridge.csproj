@@ -85,13 +85,14 @@
     <Compile Include="Chat\PlayerChattingEventArgs.cs" />
     <Compile Include="DiscordCommands.cs" />
     <Compile Include="Framework\BridgeClient.cs" />
+    <Compile Include="Framework\LoginManager.cs" />
     <Compile Include="TShockCommands.cs" />
     <Compile Include="ConfigFile.cs" />
     <Compile Include="DiscordBridge.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Permissions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Framework\BridgePlayer.cs" />
+    <Compile Include="Framework\BridgeUser.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

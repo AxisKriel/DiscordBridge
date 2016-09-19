@@ -37,6 +37,8 @@ namespace DiscordBridge
 			public string MinimumRoleToBroadcast { get; set; } = "";
 			public string DefaultRoleName { get; set; } = "Player";
 
+			public bool RememberLogins { get; set; } = true;
+
 			public bool StripTagsFromConsole { get; set; } = true;
 
 			public string DiscordChatFormat { get; set; } = "**<{1}> {2}{3}:** {4}";
@@ -157,6 +159,11 @@ namespace DiscordBridge
 		/// The name that should be used for users without a role (@everyone).
 		/// </summary>
 		public string DefaultRoleName => Data.DefaultRoleName;
+
+		/// <summary>
+		/// Whether or not to remember logged in users between sessions.
+		/// </summary>
+		public bool RememberLogins => Data.RememberLogins;
 
 		/// <summary>
 		/// Whether or not to remove all tags from chat messages when read in the console.

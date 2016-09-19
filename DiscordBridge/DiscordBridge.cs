@@ -30,6 +30,8 @@ namespace DiscordBridge
 
 		public override string Description => "Connects Terraria to a Discord server.";
 
+		public LoginManager Logins { get; private set; }
+
 		public override string Name => "Discord Bridge";
 
 		public override Version Version => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
@@ -189,6 +191,8 @@ namespace DiscordBridge
 			});
 
 			initDiscordCommands();
+
+			Logins = new LoginManager(Client);
 		}
 
 		private async void onLeave(LeaveEventArgs e)

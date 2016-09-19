@@ -23,7 +23,20 @@ namespace DiscordBridge
 				.Do(async e =>
 				{
 					BridgeUser player = Client[e.User];
+					bool? loggedIn = player?.IsLoggedIn;
+
 					if (player == null)
+					{
+						if (Config.RememberLogins)
+							loggedIn = await Logins.Authenticate(e.User.Id);
+						else
+							Client[e.User] = new BridgeUser(e.User);
+
+						player = Client[e.User];
+						loggedIn = player.IsLoggedIn;
+					}
+
+					if (loggedIn != true)
 					{
 						await e.User.SendMessage("You must be logged in to use TShock commands.\n"
 							+ $"Message me with `{Config.BotPrefix}login <username> <password>` using your TShock credentials to begin.");
@@ -61,7 +74,6 @@ namespace DiscordBridge
 					// Temporarily set their command channel so that messages end in the right place
 					player.CommandChannel = e.Channel;
 					Commands.HandleCommand(player, sb.Append(e.GetArg("command")).Append(' ').Append(e.GetArg("parameters")).ToString());
-					player.CommandChannel = null;
 				});
 
 			#region Account Commands
@@ -72,7 +84,21 @@ namespace DiscordBridge
 				.Parameter("password", ParameterType.Required)
 				.Do(async e =>
 				{
-					if (Client[e.User] != null)
+					BridgeUser player = Client[e.User];
+					bool? loggedIn = player?.IsLoggedIn;
+
+					if (player == null)
+					{
+						if (Config.RememberLogins)
+							loggedIn = await Logins.Authenticate(e.User.Id);
+						else
+							Client[e.User] = new BridgeUser(e.User);
+
+						player = Client[e.User];
+						loggedIn = player.IsLoggedIn;
+					}
+
+					if (loggedIn == true)
 					{
 						await e.User.SendMessage($"You are already logged in. Use `{Config.BotPrefix}logout` first if you wish to log in to a different account.");
 						return;
@@ -90,14 +116,9 @@ namespace DiscordBridge
 
 					else
 					{
-						BridgeUser bridgeUser = new BridgeUser(user, e.User);
-
-						// Do whatever needs to be done when a user initialized here
-						bridgeUser.IsLoggedIn = true;
-
-						// Future implementation: store this information (discordUserId: tshockUserId) somewhere for auto-login
-						Client[e.User] = bridgeUser;
-						await e.User.SendMessage($"Authenticated as {bridgeUser.Name} successfully.");
+						await Logins.SetData(player);
+						await Logins.Authenticate(e.User.Id);
+						await e.User.SendMessage($"Authenticated as {player.Name} successfully.");
 					}
 				});
 
@@ -105,14 +126,28 @@ namespace DiscordBridge
 				.Description("Log out of your current TShock user account.")
 				.Do(async e =>
 				{
-					if (Client[e.User] == null)
+					BridgeUser player = Client[e.User];
+					bool? loggedIn = player?.IsLoggedIn;
+
+					if (player == null)
+					{
+						if (Config.RememberLogins)
+							loggedIn = await Logins.Authenticate(e.User.Id);
+						else
+							Client[e.User] = new BridgeUser(e.User);
+
+						player = Client[e.User];
+						loggedIn = player.IsLoggedIn;
+					}
+
+					if (loggedIn != true)
 					{
 						await e.User.SendMessage("You are not logged in.");
 						return;
 					}
 
-					// Future implementation: remove stored information
-					Client[e.User] = null;
+					await Logins.RemoveData(e.User.Id);
+					await Logins.Authenticate(e.User.Id);
 					await e.User.SendMessage("You have been successfully logged out of your account.");
 				});
 
