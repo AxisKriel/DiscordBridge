@@ -25,8 +25,8 @@ namespace DiscordBridge
 					BridgeUser player = Client[e.User];
 					if (player == null)
 					{
-						await e.User.SendMessage("You must be logged in to use TShock commands.");
-						await e.User.SendMessage($"Message me with `{Config.BotPrefix}login <username> <password>` using your TShock credentials to begin.");
+						await e.User.SendMessage("You must be logged in to use TShock commands.\n"
+							+ $"Message me with `{Config.BotPrefix}login <username> <password>` using your TShock credentials to begin.");
 						return;
 					}
 
@@ -39,7 +39,7 @@ namespace DiscordBridge
 
 					if (blacklist.Contains(e.GetArg("command")))
 					{
-						await e.Channel.SendMessage($"Use `{Config.BotPrefix}{e.GetArg("command")}` without the `{Config.BotPrefix}do` prefix instead.");
+						await e.Channel.SendMessage($"This is a discord command, so use `{Config.BotPrefix}{e.GetArg("command")}` (without the `{Config.BotPrefix}do` prefix) instead.");
 						return;
 					}
 
@@ -148,19 +148,11 @@ namespace DiscordBridge
 						return;
 					}
 
-					if (Config.OtherServerBots.Exists(b => b.Id == botUser.Id))
-					{
-						await e.Channel.SendMessage($"`{e.GetArg("name")}` is already on the broadcast is.");
-						return;
-					}
-
-					// Because ConfigFile only saves when directly setting a member, we need to re-set the entire list here
-					var bots = new List<ConfigFile.ServerBot>(Config.OtherServerBots);
-					bots.Add(new ConfigFile.ServerBot { Id = botUser.Id });
-					Config.OtherServerBots = bots;
-
 					string mention = String.IsNullOrWhiteSpace(botUser.Nickname) ? botUser.Mention : botUser.NicknameMention;
-					await e.Channel.SendMessage($"Added {mention} to the broadcasting list.");
+					if (Config.AddBot(botUser.Id))
+						await e.Channel.SendMessage($"Added {mention} to the broadcasting list.");
+					else
+						await e.Channel.SendMessage($"{mention} is already on the broadcast list.");
 				});
 
 			#endregion

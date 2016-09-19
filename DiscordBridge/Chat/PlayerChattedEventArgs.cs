@@ -9,14 +9,18 @@ namespace DiscordBridge.Chat
 {
 	public class PlayerChattedEventArgs : EventArgs
 	{
+		public Dictionary<string, Color?> ColorFormatters { get; }
+
 		public ChatMessageBuilder Message { get; }
 
 		public TSPlayer Player { get; }
 
-		public PlayerChattedEventArgs(ChatMessageBuilder builder, TSPlayer player)
+		public PlayerChattedEventArgs(ChatMessageBuilder builder, TSPlayer player, Dictionary<string, Color?> colorDictionary = null)
 		{
 			Message = builder;
 			Player = player;
+
+			ColorFormatters = colorDictionary;
 		}
 	}
 }

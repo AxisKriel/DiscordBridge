@@ -10,7 +10,10 @@ namespace DiscordBridge.Extensions
 	{
 		private class Tag
 		{
-			enum Type
+			// Source: Terraria
+			public static Regex Regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
+
+			public enum TagType
 			{
 				None,
 				Color,
@@ -22,7 +25,7 @@ namespace DiscordBridge.Extensions
 
 			private string _raw { get; }
 
-			private Type _type { get; }
+			public TagType Type { get; }
 
 			public string Options { get; }
 
@@ -39,31 +42,31 @@ namespace DiscordBridge.Extensions
 				{
 					case "c":
 					case "color":
-						_type = Type.Color;
+						Type = TagType.Color;
 						break;
 
 					case "i":
 					case "item":
-						_type = Type.Item;
+						Type = TagType.Item;
 						break;
 
 					case "n":
 					case "name":
-						_type = Type.Name;
+						Type = TagType.Name;
 						break;
 
 					case "a":
 					case "achievement":
-						_type = Type.Achievement;
+						Type = TagType.Achievement;
 						break;
 
 					case "g":
 					case "glyph":
-						_type = Type.Glyph;
+						Type = TagType.Glyph;
 						break;
 
 					default:
-						_type = Type.None;
+						Type = TagType.None;
 						break;
 				}
 
@@ -73,18 +76,18 @@ namespace DiscordBridge.Extensions
 
 			public string Parse(bool quotes = false)
 			{
-				switch (_type)
+				switch (Type)
 				{
-					case Type.None:
-					case Type.Color:
-					case Type.Name:
+					case TagType.None:
+					case TagType.Color:
+					case TagType.Name:
 					// Sadly there is no way left in TSAPI for getting an achievement name, so we have to keep it as the tag text
-					case Type.Achievement:
-					case Type.Glyph:
+					case TagType.Achievement:
+					case TagType.Glyph:
 					default:
 						return Text;
 
-					case Type.Item:
+					case TagType.Item:
 						Item item = TShock.Utils.GetItemFromTag(_raw);
 						string stack = item.stack > 1 ? $"{item.stack} " : "";
 						if (quotes)
@@ -95,6 +98,33 @@ namespace DiscordBridge.Extensions
 			}
 
 			public override string ToString() => _raw;
+		}
+
+		/// <summary>
+		/// Converts all color tags in a string that use a variable name as the option into regular color tags.
+		/// </summary>
+		/// <param name="s">The string to parse.</param>
+		/// <param name="colorDictionary">
+		/// A dictionary where the keys are variable names and the values are the corresponding colors.
+		/// </param>
+		/// <returns>The input string after being parsed.</returns>
+		public static string ParseColorSpecial(this string s, Dictionary<string, Color?> colorDictionary)
+		{
+			MatchCollection matches = Tag.Regex.Matches(s);
+
+			foreach (Match m in matches)
+			{
+				Tag tag = new Tag(m);
+				if (tag.Type == Tag.TagType.Color && colorDictionary.ContainsKey(tag.Options))
+				{
+					if (colorDictionary[tag.Options].HasValue)
+						s = s.Replace(m.Value, $"[c/{colorDictionary[tag.Options].Value.Hex3()}:{tag.Text}]");
+					else
+						s = s.Replace(m.Value, tag.Text);
+				}
+			}
+
+			return s;
 		}
 
 		/// <summary>
@@ -110,9 +140,7 @@ namespace DiscordBridge.Extensions
 		/// <returns>A string with no chat tags.</returns>
 		public static string StripTags(this string s, bool quoteResult = false)
 		{
-			// Source: Terraria
-			var regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
-			MatchCollection matches = regex.Matches(s);
+			MatchCollection matches = Tag.Regex.Matches(s);
 
 			foreach (Match m in matches)
 			{

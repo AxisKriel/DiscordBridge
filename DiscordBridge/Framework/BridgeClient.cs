@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using DiscordBridge.Chat;
 using DiscordBridge.Extensions;
 using TShockAPI;
 
@@ -136,18 +137,19 @@ namespace DiscordBridge.Framework
 
 				if (e.Channel.IsPrivate)
 				{
-					if (e.User.IsBot && _main.Config.OtherServerBots.Exists(b => b.Id == e.User.Id))
+					if (e.User.IsBot && _main.Config.ServerBots.Exists(b => b.Id == e.User.Id))
 					{
 						// Message is Multi-Server Broadcast
-						TSPlayer.All.SendMessage(e.Message.RawText, Color.White);
+						TSPlayer.All.SendMessage(e.Message.Text, Color.White);
 
 						// Strip tags when sending to console
-						TSPlayer.Server.SendMessage(e.Message.RawText.StripTags(), Color.White);
+						TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), Color.White);
 					}
 					else
 					{
-						// Because I don't feel like making a custom handler, tell users to use the prefix
-						await e.Channel.SendMessage($"Type `{_main.Config.BotPrefix}help` for a list of available commands.");
+						// Because I don't feel like making a custom handler, give some general info about tshock commands
+						await e.Channel.SendMessage($"TShock commands must be prefixed with `{_main.Config.BotPrefix}do `."
+							+ $"\nExample: `{_main.Config.BotPrefix}do who`.");
 					}
 				}
 
@@ -179,29 +181,40 @@ namespace DiscordBridge.Framework
 						}
 
 						Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
-						string roleName = topRole.IsEveryone ? _main.Config.DefaultRoleName : topRole.Name;
 						Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
 
-						string name = String.IsNullOrWhiteSpace(_main.Config.CustomNameFormat) ? e.User.Name
-							: String.Format(_main.Config.CustomNameFormat, roleName, e.User.Name,
-							String.IsNullOrWhiteSpace(e.User.Nickname) ? e.User.Name : e.User.Nickname);
-
-						// Colorize name
-						if (_main.Config.UseColoredNames)
+						// Setting up the color dictionary - if there is need for more colors, they may be added later
+						var colorDictionary = new Dictionary<string, Color?>
 						{
-							BridgeUser user;
-							if (_main.Config.UseTShockColors && (user = this[e.User]) != null)
-								name = TShock.Utils.ColorTag(name, new Color(user.Group.R, user.Group.G, user.Group.B));
-							else
-								name = TShock.Utils.ColorTag(name, roleColor);
-						}
+							["Role"] = roleColor,
+							["Group"] = this[e.User] != null ? new Color(this[e.User].Group.R, this[e.User].Group.G, this[e.User].Group.B) : roleColor,
+						};
 
-						string text = String.Format(_main.Config.GameChatFormat, name, e.Message.RawText);
+						#region Format Colors
 
-						TSPlayer.All.SendMessage(text, Color.White);
+						var roleName = new ChatMessage.Section(topRole.IsEveryone ? _main.Config.DefaultRoleName : topRole.Name);
+						if (_main.Config.Broadcast.Colors.Role == DiscordBroadcastColor.Role || _main.Config.Broadcast.Colors.Role == DiscordBroadcastColor.Group)
+							roleName.Color = colorDictionary[_main.Config.Broadcast.Colors.Role.ToString()];
+
+						var name = new ChatMessage.Section(e.User.Name);
+						if (_main.Config.Broadcast.Colors.Name == DiscordBroadcastColor.Role || _main.Config.Broadcast.Colors.Name == DiscordBroadcastColor.Group)
+							name.Color = colorDictionary[_main.Config.Broadcast.Colors.Name.ToString()];
+
+						var nick = new ChatMessage.Section(String.IsNullOrWhiteSpace(e.User.Nickname) ? e.User.Name : e.User.Nickname);
+						if (_main.Config.Broadcast.Colors.Nickname == DiscordBroadcastColor.Role || _main.Config.Broadcast.Colors.Nickname == DiscordBroadcastColor.Group)
+							nick.Color = colorDictionary[_main.Config.Broadcast.Colors.Nickname.ToString()];
+
+						string text = e.Message.Text;
+
+						#endregion
+
+						string msg = String.Format(_main.Config.Broadcast.Format.ParseColorSpecial(colorDictionary),
+							roleName, name, nick, text);
+
+						TSPlayer.All.SendMessage(msg, Color.White);
 
 						// Strip tags when sending to console
-						TSPlayer.Server.SendMessage(text.StripTags(), Color.White);
+						TSPlayer.Server.SendMessage(msg.StripTags(), Color.White);
 					}
 				}
 			}

@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using TShockAPI;
 
 namespace DiscordBridge.Chat
 {
 	public class PlayerChattingEventArgs : EventArgs
 	{
+		public Dictionary<string, Color?> ColorFormatters { get; } = new Dictionary<string, Color?>();
+
 		public ChatMessageBuilder Message { get; set; }
 
 		public TSPlayer Player { get; set; }

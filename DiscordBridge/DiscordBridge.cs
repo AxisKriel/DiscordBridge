@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Discord;
 using Discord.Commands;
@@ -85,7 +86,7 @@ namespace DiscordBridge
 				}
 
 				// Multi-Server Broadcast
-				foreach (ConfigFile.ServerBot bot in Config.OtherServerBots.FindAll(b => b.Id > 0))
+				foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
 				{
 					User botUser = Client.CurrentServer.GetUser(bot.Id);
 
@@ -95,15 +96,55 @@ namespace DiscordBridge
 						return;
 					}
 
-					await botUser.SendMessage(String.Format(bot.OutgoingFormat,
-						String.IsNullOrWhiteSpace(botUser.Nickname) ? botUser.Name : botUser.Nickname,
-						String.Join(e.Message.ToMessage().PrefixSeparator, e.Message.Prefixes),
-						e.Message.Name,
-						String.Join(e.Message.ToMessage().SuffixSeparator, e.Message.Suffixes),
-						e.Message.Text,
-						e.Message.Color?.Hex3() ?? "ffffff",
-						e.Message.Header.Color?.Hex3() ?? "ffffff",
-						e.Message.Name.Color?.Hex3() ?? "ffffff"));
+					/* Setting up the color dictionary - if there is need for more colors, they may be added later
+					 * Plugins may add more formatters by adding elements to the ColorFormatters property of event args */
+					var colorDictionary = new Dictionary<string, Color?>(e.ColorFormatters)
+					{
+						["Group"] = new Color(e.Player.Group.R, e.Player.Group.G, e.Player.Group.B),
+						["Message"] = e.Message.Color,
+						["Name"] = e.Message.Name.Color
+					};
+
+					#region Format Colors
+
+					var botNick = new ChatMessage.Section(String.IsNullOrWhiteSpace(botUser.Nickname) ? botUser.Name : botUser.Nickname);
+					if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Specific)
+					{
+						Discord.Color discordColor = botUser.Roles.OrderBy(r => r.Position).Last()?.Color;
+						if (discordColor != null && discordColor != Discord.Color.Default)
+							botNick.Color = new Color(discordColor.R, discordColor.G, discordColor.B);
+					}
+					else if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Group || bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Message)
+						botNick.Color = colorDictionary[bot.Broadcast.Colors.BotNick.ToString()];
+
+					var prefixes = new List<ChatMessage.Section>(e.Message.Prefixes);
+					if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.None)
+						prefixes.ForEach(p => p.Color = null);
+					else if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Message)
+						prefixes.ForEach(p => p.Color = colorDictionary[bot.Broadcast.Colors.Prefixes.ToString()]);
+
+					ChatMessage.Section name = e.Message.Name;
+					if (bot.Broadcast.Colors.Name == ServerBroadcastColor.None)
+						name.Color = null;
+					else if (bot.Broadcast.Colors.Name == ServerBroadcastColor.Group || bot.Broadcast.Colors.Name == ServerBroadcastColor.Message)
+						name.Color = colorDictionary[bot.Broadcast.Colors.Name.ToString()];
+
+					var suffixes = new List<ChatMessage.Section>(e.Message.Suffixes);
+					if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.None)
+						suffixes.ForEach(s => s.Color = null);
+					else if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Message)
+						suffixes.ForEach(s => s.Color = colorDictionary[bot.Broadcast.Colors.Suffixes.ToString()]);
+
+					string text = e.Message.Text;
+
+					#endregion
+
+					await botUser.SendMessage(String.Format(bot.Broadcast.Format.ParseColorSpecial(colorDictionary),
+						botNick,
+						String.Join(e.Message.ToMessage().PrefixSeparator, prefixes),
+						name,
+						String.Join(e.Message.ToMessage().SuffixSeparator, suffixes),
+						text));
 				}
 			}
 		}

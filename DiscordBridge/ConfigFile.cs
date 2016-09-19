@@ -5,32 +5,112 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using TShockAPI;
 
 namespace DiscordBridge
 {
+	public enum DiscordBroadcastColor
+	{
+		None,
+		Role,
+		Group
+	}
+
+	public enum ServerBroadcastColor
+	{
+		None,
+		Specific,
+		Group,
+		Message
+	}
+
 	public class ConfigFile
 	{
 		public const string FILENAME = "DiscordBridge.json";
 
 		protected class Contents
 		{
-			public char BotPrefix = '!';
-			public string BotToken;
-			public string[] TerrariaChannels = new[] { "terraria" };
-			public string MinimumRoleToBroadcast = "";
-			public string DefaultRoleName = "Player";
+			public char BotPrefix { get; set; } = '!';
+			public string BotToken { get; set; } = "";
+			public string[] TerrariaChannels { get; set; } = new[] { "terraria" };
+			public string MinimumRoleToBroadcast { get; set; } = "";
+			public string DefaultRoleName { get; set; } = "Player";
 
-			public bool StripTagsFromConsole = true;
+			public bool StripTagsFromConsole { get; set; } = true;
 
-			public string DiscordChatFormat = "**<{1}> {2}{3}:** {4}";
+			public string DiscordChatFormat { get; set; } = "**<{1}> {2}{3}:** {4}";
 
-			public string GameChatFormat = "[c/00ffb9:Discord>] {0}[c/00ffb9::] {1}";
-			public bool UseColoredNames = true;
-			public bool UseTShockColors = true;
-			public string CustomNameFormat = "<{0}> {2}";
+			public DiscordBroadcast DiscordBroadcast { get; set; } = new DiscordBroadcast
+			{
+				Format = "[c/00ffb9:Discord>] <{0}> {2}[c/Name::] {3}",
+				Colors = new DiscordBroadcast.ColorGroup
+				{
+					Role = DiscordBroadcastColor.Role,
+					Name = DiscordBroadcastColor.Role,
+					Nickname = DiscordBroadcastColor.Role
+				}
+			};
 
-			public ServerBot[] OtherServerBots = new[] { new ServerBot() };
+			public ServerBot[] ServerBots { get; set; } = new[]
+			{
+				new ServerBot
+				{
+					Id = 0,
+					Broadcast = new ServerBroadcast
+					{
+						Format = "[c/00ff00:{0}>] <{1}> {2}{3}[c/Name::] {4}",
+						Colors = new ServerBroadcast.ColorGroup
+						{
+							BotNick = ServerBroadcastColor.None,
+							Prefixes = ServerBroadcastColor.Group,
+							Name = ServerBroadcastColor.Group,
+							Suffixes = ServerBroadcastColor.Group
+						}
+					}
+				}
+			};
+		}
+
+		public class DiscordBroadcast
+		{
+			public struct ColorGroup
+			{
+				[JsonConverter(typeof(StringEnumConverter))]
+				public DiscordBroadcastColor Role { get; set; }
+
+				[JsonConverter(typeof(StringEnumConverter))]
+				public DiscordBroadcastColor Name { get; set; }
+
+				[JsonConverter(typeof(StringEnumConverter))]
+				public DiscordBroadcastColor Nickname { get; set; }
+			}
+
+			public string Format { get; set; }
+
+			public ColorGroup Colors { get; set; }
+		}
+
+		public class ServerBroadcast
+		{
+			public struct ColorGroup
+			{
+				[JsonConverter(typeof(StringEnumConverter))]
+				public ServerBroadcastColor BotNick { get; set; }
+
+				[JsonConverter(typeof(StringEnumConverter))]
+				public ServerBroadcastColor Prefixes { get; set; }
+
+				[JsonConverter(typeof(StringEnumConverter))]
+				public ServerBroadcastColor Name { get; set; }
+
+				[JsonConverter(typeof(StringEnumConverter))]
+				public ServerBroadcastColor Suffixes { get; set; }
+			}
+
+			public string Format { get; set; }
+
+			public ColorGroup Colors { get; set; }
 		}
 
 		public class ServerBot
@@ -40,12 +120,7 @@ namespace DiscordBridge
 			/// </summary>
 			public ulong Id { get; set; }
 
-			/// <summary>
-			/// How to format messages before sending them to this bot:
-			/// {0} - Header (set to bot nick), {1} - Prefixes, {2} - Sender, {3} - Suffixes, {4} - Message Body,
-			/// {5} - Message color in hex, {6} - Header color in hex, {7} - Name color in hex
-			/// </summary>
-			public string OutgoingFormat { get; set; } = "{0}> <{1}> {2}{3}[c/{7}::] {4}";
+			public ServerBroadcast Broadcast { get; set; }
 		}
 
 		protected Contents Data = new Contents();
@@ -76,143 +151,64 @@ namespace DiscordBridge
 		/// <summary>
 		/// The list of <see cref="Discord.Channel"/>s to relay messages to/from.
 		/// </summary>
-		public string[] TerrariaChannels
-		{
-			get { return Data.TerrariaChannels; }
-			set
-			{
-				Data.TerrariaChannels = value;
-				save();
-			}
-		}
+		public string[] TerrariaChannels => Data.TerrariaChannels;
 
 		/// <summary>
 		/// The name that should be used for users without a role (@everyone).
 		/// </summary>
-		public string DefaultRoleName
-		{
-			get { return Data.DefaultRoleName; }
-			set
-			{
-				Data.DefaultRoleName = value;
-				save();
-			}
-		}
+		public string DefaultRoleName => Data.DefaultRoleName;
 
 		/// <summary>
 		/// Whether or not to remove all tags from chat messages when read in the console.
 		/// Improves readability but prevents you from reading exactly what is being sent.
 		/// </summary>
-		public bool StripTagsFromConsole
-		{
-			get { return Data.StripTagsFromConsole; }
-			set
-			{
-				Data.StripTagsFromConsole = value;
-				save();
-			}
-		}
+		public bool StripTagsFromConsole => Data.StripTagsFromConsole;
 
 		/// <summary>
 		/// Tells the bot how to format messages being sent from in-game to the Discord channel:
 		/// {0} - Header, {1} - Prefixes, {2} - Sender, {3} - Suffixes, {4} - Message Body
 		/// </summary>
-		public string DiscordChatFormat
-		{
-			get { return Data.DiscordChatFormat; }
-			set
-			{
-				Data.DiscordChatFormat = value;
-				save();
-			}
-		}
+		public string DiscordChatFormat => Data.DiscordChatFormat;
 
 		/// <summary>
-		/// Tells the bot how to format messages before they're broadcasted to the game.
-		/// {0} - Name (can be modified with <see cref="CustomNameFormat"/>);
-		/// {1} - Text.
+		/// Tells the bot how to format messages before they're broadcasted to the game:
+		/// {0} - Role,
+		/// {1} - Name,
+		/// {2} - Nickname (or name if the user doesn't have one),
+		/// {3} - Text
 		/// </summary>
-		public string GameChatFormat
-		{
-			get { return Data.GameChatFormat; }
-			set
-			{
-				Data.GameChatFormat = value;
-				save();
-			}
-		}
-
-		/// <summary>
-		/// Whether or not to colorize names based on their role.
-		/// </summary>
-		public bool UseColoredNames
-		{
-			get { return Data.UseColoredNames; }
-			set
-			{
-				Data.UseColoredNames = value;
-				save();
-			}
-		}
-
-		/// <summary>
-		/// If <see cref="UseColoredNames"/> is true and the user is logged in, use their group color over role.
-		/// </summary>
-		public bool UseTShockColors
-		{
-			get { return Data.UseTShockColors; }
-			set
-			{
-				Data.UseTShockColors = value;
-				save();
-			}
-		}
-
-		/// <summary>
-		/// Modifies how the name parameter works in <see cref="GameChatFormat"/>.
-		/// If not set, defaults to "Name".
-		/// {0} - User role;
-		/// {1} - User name.
-		/// {2} - User nickname (or name if non-existant) on the server.
-		/// </summary>
-		public string CustomNameFormat
-		{
-			get { return Data.CustomNameFormat; }
-			set
-			{
-				Data.CustomNameFormat = value;
-				save();
-			}
-		}
+		public DiscordBroadcast Broadcast => Data.DiscordBroadcast;
 
 		/// <summary>
 		/// The minimum role a user must have to have their messages broadcasted into the game.
 		/// If not set, will broadcast everyone's messages.
 		/// </summary>
-		public string MinimumRoleToBroadcast
-		{
-			get { return Data.MinimumRoleToBroadcast; }
-			set
-			{
-				Data.MinimumRoleToBroadcast = value;
-				save();
-			}
-		}
+		public string MinimumRoleToBroadcast => Data.MinimumRoleToBroadcast;
 
 		/// <summary>
 		/// A list of other Discord Bridge bots added by the '!addbot' command.
 		/// This bot will broadcast all messages received from the game to every bot on this list
-		/// following their <see cref="ServerBot.OutgoingFormat"/>, as well as transmit everything
+		/// following their <see cref="ServerBot.Broadcast"/> settings, as well as transmit everything
 		/// received from them to the game.
 		/// </summary>
-		public List<ServerBot> OtherServerBots
+		public List<ServerBot> ServerBots => new List<ServerBot>(Data.ServerBots);
+
+		/// <summary>
+		/// Adds a server bot to the broadcast list if it doesn't already contain it.
+		/// </summary>
+		/// <param name="botId">The bot identifier.</param>
+		public bool AddBot(ulong botId)
 		{
-			get { return new List<ServerBot>(Data.OtherServerBots); }
-			set
+			if (!ServerBots.Exists(b => b.Id == botId))
 			{
-				Data.OtherServerBots = value.ToArray();
+				var oldList = new List<ServerBot>(Data.ServerBots);
+				oldList.Add(new ServerBot { Id = botId });
+				Data.ServerBots = oldList.ToArray();
 				save();
+				return true;
 			}
+
+			return false;
 		}
 
 		private void save()
