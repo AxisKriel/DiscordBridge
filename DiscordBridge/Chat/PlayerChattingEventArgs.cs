@@ -6,6 +6,8 @@ namespace DiscordBridge.Chat
 {
 	public class PlayerChattingEventArgs : EventArgs
 	{
+		public Dictionary<string, string> ChatFormatters { get; } = new Dictionary<string, string>();
+
 		public Dictionary<string, Color?> ColorFormatters { get; } = new Dictionary<string, Color?>();
 
 		public ChatMessageBuilder Message { get; set; }

@@ -208,7 +208,7 @@ namespace DiscordBridge.Framework
 
 						#endregion
 
-						string msg = String.Format(_main.Config.Broadcast.Format.ParseColorSpecial(colorDictionary),
+						string msg = String.Format(_main.Config.Broadcast.Format.ParseColors(colorDictionary),
 							roleName, name, nick, text);
 
 						TSPlayer.All.SendMessage(msg, Color.White);

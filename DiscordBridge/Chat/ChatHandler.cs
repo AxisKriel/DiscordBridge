@@ -84,14 +84,17 @@ namespace DiscordBridge.Chat
 					PlayerChatting?.Invoke(this, args);
 
 					// Manually replicate Broadcast so that the message sent to the console doesn't include tags
-					TSPlayer.All.SendMessage(args.Message.ToString(), args.Message.Color ?? Color.White);
+					TSPlayer.All.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters),
+						args.Message.Color ?? Color.White);
+
 					if (StripTagsFromConsole)
-						TSPlayer.Server.SendMessage(args.Message.ToString().StripTags(), args.Message.Color ?? Color.White);
+						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters).StripTags(), args.Message.Color ?? Color.White);
 					else
-						TSPlayer.Server.SendMessage(args.Message.ToString(), args.Message.Color ?? Color.White);
+						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters), args.Message.Color ?? Color.White);
+
 					TShock.Log.Info($"Broadcast: {args.Message.ToString()}");
 
-					PlayerChatted?.Invoke(this, new PlayerChattedEventArgs(args.Message, tsplr));
+					PlayerChatted?.Invoke(this, new PlayerChattedEventArgs(args));
 					e.Handled = true;
 				}
 				else
@@ -112,7 +115,8 @@ namespace DiscordBridge.Chat
 					PlayerChatting?.Invoke(this, args);
 
 					Color color = args.Message.Color ?? new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
-					NetMessage.SendData((int)PacketTypes.ChatText, -1, e.Who, args.Message.ToString(), e.Who, color.R, color.G, color.B);
+					NetMessage.SendData((int)PacketTypes.ChatText, -1, e.Who,
+						args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters), e.Who, color.R, color.G, color.B);
 					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, name, e.Who, 0, 0, 0, 0);
 
 					var msg = CreateMessage("<{2}> {4}").SetName(CreateMessage(TShock.Config.ChatAboveHeadsFormat)
@@ -122,7 +126,7 @@ namespace DiscordBridge.Chat
 						.Suffix(tsplr.Group.Suffix).ToString()).SetText(args.Message.ToString());
 
 					tsplr.SendMessage(msg.ToString(), color.R, color.G, color.B);
-					PlayerChatted?.Invoke(this, new PlayerChattedEventArgs(msg, tsplr));
+					PlayerChatted?.Invoke(this, new PlayerChattedEventArgs(args));
 
 					TSPlayer.Server.SendMessage(msg.ToString(), color.R, color.G, color.B);
 					TShock.Log.Info("Broadcast: {0}", msg);

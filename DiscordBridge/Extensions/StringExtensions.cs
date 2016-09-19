@@ -100,6 +100,19 @@ namespace DiscordBridge.Extensions
 			public override string ToString() => _raw;
 		}
 
+		public static string FormatChat(this string s, Dictionary<string, string> chatDictionary)
+		{
+			MatchCollection matches = Regex.Matches(s, @"{([a-zA-Z]+)}");
+
+			foreach (Match m in matches)
+			{
+				if (chatDictionary.ContainsKey(m.Groups[1].Value))
+					s = s.Replace(m.Value, chatDictionary[m.Groups[1].Value]);
+			}
+
+			return s;
+		}
+
 		/// <summary>
 		/// Converts all color tags in a string that use a variable name as the option into regular color tags.
 		/// </summary>
@@ -108,7 +121,7 @@ namespace DiscordBridge.Extensions
 		/// A dictionary where the keys are variable names and the values are the corresponding colors.
 		/// </param>
 		/// <returns>The input string after being parsed.</returns>
-		public static string ParseColorSpecial(this string s, Dictionary<string, Color?> colorDictionary)
+		public static string ParseColors(this string s, Dictionary<string, Color?> colorDictionary)
 		{
 			MatchCollection matches = Tag.Regex.Matches(s);
 

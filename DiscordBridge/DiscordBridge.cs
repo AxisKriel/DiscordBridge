@@ -77,7 +77,7 @@ namespace DiscordBridge
 					Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
 					if (c != null)
 					{
-						Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().StripTags(true));
+						Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().FormatChat(e.ChatFormatters).StripTags(true));
 						if (m.State == MessageState.Failed)
 						{
 							TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");
@@ -139,7 +139,7 @@ namespace DiscordBridge
 
 					#endregion
 
-					await botUser.SendMessage(String.Format(bot.Broadcast.Format.ParseColorSpecial(colorDictionary),
+					await botUser.SendMessage(String.Format(bot.Broadcast.Format.FormatChat(e.ChatFormatters).ParseColors(colorDictionary),
 						botNick,
 						String.Join(e.Message.ToMessage().PrefixSeparator, prefixes),
 						name,
