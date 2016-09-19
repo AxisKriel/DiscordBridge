@@ -124,6 +124,21 @@ namespace DiscordBridge.Framework
 			}
 		}
 
+		public async Task<BridgeUser> LoadUser(User user)
+		{
+			BridgeUser player = this[user];
+
+			if (player == null)
+			{
+				if (_main.Config.RememberLogins)
+					return await _main.Logins.Authenticate(user.Id);
+				else
+					return new BridgeUser(user);
+			}
+
+			return player;
+		}
+
 		#region Handlers
 
 		private async void onMessageReceived(object sender, MessageEventArgs e)
@@ -189,19 +204,13 @@ namespace DiscordBridge.Framework
 						Role topRole = e.User.Roles.OrderBy(r => r.Position).Last();
 						Color roleColor = topRole.IsEveryone ? Color.Gray : new Color(topRole.Color.R, topRole.Color.G, topRole.Color.B);
 
-						if (this[e.User] == null)
-						{
-							if (_main.Config.RememberLogins)
-								await _main.Logins.Authenticate(e.User.Id);
-							else
-								this[e.User] = new BridgeUser(e.User);
-						}
+						BridgeUser player = await LoadUser(e.User);
 
 						// Setting up the color dictionary - if there is need for more colors, they may be added later
 						var colorDictionary = new Dictionary<string, Color?>
 						{
 							["Role"] = roleColor,
-							["Group"] = this[e.User].IsLoggedIn ? new Color(this[e.User].Group.R, this[e.User].Group.G, this[e.User].Group.B) : roleColor,
+							["Group"] = player.IsLoggedIn ? new Color(player.Group.R, player.Group.G, player.Group.B) : roleColor,
 						};
 
 						#region Format Colors

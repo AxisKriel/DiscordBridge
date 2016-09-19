@@ -23,17 +23,15 @@ namespace DiscordBridge.Framework
 			_client = client;
 		}
 
-		public async Task<bool> Authenticate(ulong id)
+		public async Task<BridgeUser> Authenticate(ulong id)
 		{
 			if (await ContainsData(id))
 			{
-				_client[id] = new BridgeUser(TShock.Users.GetUserByID(await GetData(id)), _client.CurrentServer.GetUser(id));
-				return true;
+				return new BridgeUser(TShock.Users.GetUserByID(await GetData(id)), _client.CurrentServer.GetUser(id));
 			}
 			else
 			{
-				_client[id] = new BridgeUser(_client.CurrentServer.GetUser(id));
-				return false;
+				return new BridgeUser(_client.CurrentServer.GetUser(id));
 			}
 		}
 
@@ -56,13 +54,9 @@ namespace DiscordBridge.Framework
 			});
 		}
 
-		public Task SetData(BridgeUser user)
+		public Task SetData(Discord.User discordUser, TShockAPI.DB.User tshockUser)
 		{
-			return Task.Run(() =>
-			{
-				if (user.IsLoggedIn)
-					File.WriteAllText(Path.Combine(DirPath, user.DiscordUser.Id.ToString()), user.User.ID.ToString());
-			});
+			return Task.Run(() => File.WriteAllText(Path.Combine(DirPath, discordUser.Id.ToString()), tshockUser.ID.ToString()));
 		}
 
 		public Task RemoveData(ulong id)

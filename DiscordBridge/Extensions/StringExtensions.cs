@@ -108,6 +108,8 @@ namespace DiscordBridge.Extensions
 			{
 				if (chatDictionary.ContainsKey(m.Groups[1].Value))
 					s = s.Replace(m.Value, chatDictionary[m.Groups[1].Value]);
+				else
+					s = s.Replace(m.Value, "");
 			}
 
 			return s;

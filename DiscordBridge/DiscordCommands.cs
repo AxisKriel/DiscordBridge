@@ -22,21 +22,9 @@ namespace DiscordBridge
 				.Parameter("parameters", ParameterType.Unparsed)
 				.Do(async e =>
 				{
-					BridgeUser player = Client[e.User];
-					bool? loggedIn = player?.IsLoggedIn;
+					BridgeUser player = await Client.LoadUser(e.User);
 
-					if (player == null)
-					{
-						if (Config.RememberLogins)
-							loggedIn = await Logins.Authenticate(e.User.Id);
-						else
-							Client[e.User] = new BridgeUser(e.User);
-
-						player = Client[e.User];
-						loggedIn = player.IsLoggedIn;
-					}
-
-					if (loggedIn != true)
+					if (!player.IsLoggedIn)
 					{
 						await e.User.SendMessage("You must be logged in to use TShock commands.\n"
 							+ $"Message me with `{Config.BotPrefix}login <username> <password>` using your TShock credentials to begin.");
@@ -73,7 +61,17 @@ namespace DiscordBridge
 
 					// Temporarily set their command channel so that messages end in the right place
 					player.CommandChannel = e.Channel;
-					Commands.HandleCommand(player, sb.Append(e.GetArg("command")).Append(' ').Append(e.GetArg("parameters")).ToString());
+
+					// Disable auto flush to reduce consumption of the discord API for multiple messages
+					player.AutoFlush = false;
+
+					if (Commands.HandleCommand(player, sb.Append(e.GetArg("command")).Append(' ').Append(e.GetArg("parameters")).ToString()))
+						await player.FlushMessages();
+					else
+						await e.Channel.SendMessage("Command failed, check logs for details.");
+
+					player.AutoFlush = true;
+					player.CommandChannel = null;
 				});
 
 			#region Account Commands
@@ -84,23 +82,17 @@ namespace DiscordBridge
 				.Parameter("password", ParameterType.Required)
 				.Do(async e =>
 				{
-					BridgeUser player = Client[e.User];
-					bool? loggedIn = player?.IsLoggedIn;
+					BridgeUser player = await Client.LoadUser(e.User);
 
-					if (player == null)
+					if (e.Channel != e.User.PrivateChannel)
 					{
-						if (Config.RememberLogins)
-							loggedIn = await Logins.Authenticate(e.User.Id);
-						else
-							Client[e.User] = new BridgeUser(e.User);
-
-						player = Client[e.User];
-						loggedIn = player.IsLoggedIn;
+						// Delete the message
+						await e.Message.Delete();
 					}
 
-					if (loggedIn == true)
+					if (player.IsLoggedIn)
 					{
-						await e.User.SendMessage($"You are already logged in. Use `{Config.BotPrefix}logout` first if you wish to log in to a different account.");
+						await e.Channel.SendMessage($"You are already logged in. Use `{Config.BotPrefix}logout` first if you wish to log in to a different account.");
 						return;
 					}
 
@@ -109,16 +101,16 @@ namespace DiscordBridge
 
 					TShockAPI.DB.User user = TShock.Users.GetUserByName(username);
 					if (user == null)
-						await e.User.SendMessage("A user by that name does not exist.");
+						await e.Channel.SendMessage("A user by that name does not exist.");
 
 					else if (!user.VerifyPassword(password))
-						await e.User.SendMessage("Invalid password!");
+						await e.Channel.SendMessage("Invalid password!");
 
 					else
 					{
-						await Logins.SetData(player);
-						await Logins.Authenticate(e.User.Id);
-						await e.User.SendMessage($"Authenticated as {player.Name} successfully.");
+						await Logins.SetData(e.User, user);
+						player = await Logins.Authenticate(e.User.Id);
+						await e.Channel.SendMessage($"Authenticated as {player.Name} successfully.");
 					}
 				});
 
@@ -126,29 +118,17 @@ namespace DiscordBridge
 				.Description("Log out of your current TShock user account.")
 				.Do(async e =>
 				{
-					BridgeUser player = Client[e.User];
-					bool? loggedIn = player?.IsLoggedIn;
+					BridgeUser player = await Client.LoadUser(e.User);
 
-					if (player == null)
+					if (!player.IsLoggedIn)
 					{
-						if (Config.RememberLogins)
-							loggedIn = await Logins.Authenticate(e.User.Id);
-						else
-							Client[e.User] = new BridgeUser(e.User);
-
-						player = Client[e.User];
-						loggedIn = player.IsLoggedIn;
-					}
-
-					if (loggedIn != true)
-					{
-						await e.User.SendMessage("You are not logged in.");
+						await e.Channel.SendMessage("You are not logged in.");
 						return;
 					}
 
 					await Logins.RemoveData(e.User.Id);
 					await Logins.Authenticate(e.User.Id);
-					await e.User.SendMessage("You have been successfully logged out of your account.");
+					await e.Channel.SendMessage("You have been successfully logged out of your account.");
 				});
 
 			#endregion
@@ -159,6 +139,7 @@ namespace DiscordBridge
 				.Alias("bc", "say")
 				.Description("Make this bot say something.")
 				.Parameter("text", ParameterType.Unparsed)
+				.AddCheck((c, u, ch) => !ch.IsPrivate)
 				.AddCheck((cmd, user, channel) => user.ServerPermissions.Administrator)
 				.Do(async e => await e.Channel.SendMessage(e.GetArg("text") ?? "Hi!"));
 

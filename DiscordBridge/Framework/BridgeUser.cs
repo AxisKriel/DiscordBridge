@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Timers;
 using Discord;
 using TShockAPI;
@@ -9,11 +10,16 @@ namespace DiscordBridge.Framework
 {
 	public class BridgeUser : TSPlayer
 	{
-		private object _sending = new object();
 		private List<string> _messages = new List<string>();
-		private Timer _updateTimer = new Timer(500);
+		private Channel _channel;
 
-		public Channel CommandChannel { get; set; }
+		public bool AutoFlush { get; set; } = true;
+
+		public Channel CommandChannel
+		{
+			get { return _channel ?? DiscordUser.PrivateChannel; }
+			set { _channel = value; }
+		}
 
 		public Discord.User DiscordUser { get; }
 
@@ -21,8 +27,6 @@ namespace DiscordBridge.Framework
 		{
 			Group = TShock.Utils.GetGroup(user.Group);
 			User = user;
-
-			_updateTimer.Elapsed += flushMessages;
 		}
 
 		public BridgeUser(Discord.User discordUser) : base(discordUser.Name)
@@ -36,84 +40,62 @@ namespace DiscordBridge.Framework
 			IsLoggedIn = true;
 		}
 
-		~BridgeUser()
+		public async Task FlushMessages()
 		{
-			_updateTimer.Elapsed -= flushMessages;
-			_updateTimer.Stop();
-		}
-
-		private async void flushMessages(object sender, ElapsedEventArgs e)
-		{
-			string fullMsg;
-			lock (_sending)
+			if (_messages.Count > 0)
 			{
-				fullMsg = String.Join("\n", _messages);
+				await CommandChannel.SendMessage(String.Join("\n", _messages));
 				_messages.Clear();
-				_updateTimer.Stop();
 			}
-			await (CommandChannel?.SendMessage(fullMsg) ?? DiscordUser.SendMessage(fullMsg));
-			CommandChannel = null;
 		}
 
-		public override void SendErrorMessage(string msg)
+		public override async void SendErrorMessage(string msg)
 		{
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 
-		public override void SendInfoMessage(string msg)
+		public override async void SendInfoMessage(string msg)
 		{
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 
-		public override void SendSuccessMessage(string msg)
+		public override async void SendSuccessMessage(string msg)
 		{
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 
-		public override void SendWarningMessage(string msg)
+		public override async void SendWarningMessage(string msg)
 		{
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 
-		public override void SendMessage(string msg, Color color)
+		public override async void SendMessage(string msg, Color color)
 		{
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 
-		public override void SendMessage(string msg, byte red, byte green, byte blue)
+		public override async void SendMessage(string msg, byte red, byte green, byte blue)
 		{
 			// Maybe one day Discord will support custom message colors
-			lock (_sending)
-			{
+			if (AutoFlush)
+				await CommandChannel.SendMessage(msg);
+			else
 				_messages.Add(msg);
-				if (!_updateTimer.Enabled)
-					_updateTimer.Start();
-			}
 		}
 	}
 }
