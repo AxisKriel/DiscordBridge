@@ -11,7 +11,7 @@ namespace DiscordBridge.Extensions
 		private class Tag
 		{
 			// Source: Terraria
-			public static Regex Regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.+?)(?<!\\\\)\\]", RegexOptions.Compiled);
+			public static Regex Regex = new Regex("(?<!\\\\)\\[(?<tag>[a-zA-Z]{1,10})(\\/(?<options>[^:]+))?:(?<text>.*?)(?<!\\\\)\\]", RegexOptions.Compiled);
 
 			public enum TagType
 			{
@@ -115,6 +115,22 @@ namespace DiscordBridge.Extensions
 			return s;
 		}
 
+		public static Color? FromRGB(this string s)
+		{
+			if (String.IsNullOrWhiteSpace(s))
+				return null;
+
+			string[] rgb = s.Split(',');
+			if (rgb.Length != 3)
+				return null;
+
+			byte[] parsed = new byte[3];
+			for (int i = 0; i < 3; i++)
+				Byte.TryParse(rgb[i], out parsed[i]);
+
+			return new Color(parsed[0], parsed[1], parsed[2]);
+		}
+
 		/// <summary>
 		/// Converts all color tags in a string that use a variable name as the option into regular color tags.
 		/// </summary>
@@ -132,7 +148,9 @@ namespace DiscordBridge.Extensions
 				Tag tag = new Tag(m);
 				if (tag.Type == Tag.TagType.Color && colorDictionary.ContainsKey(tag.Options))
 				{
-					if (colorDictionary[tag.Options].HasValue)
+					if (String.IsNullOrWhiteSpace(tag.Text))
+						s = s.Replace(m.Value, "");
+					else if (colorDictionary[tag.Options].HasValue)
 						s = s.Replace(m.Value, $"[c/{colorDictionary[tag.Options].Value.Hex3()}:{tag.Text}]");
 					else
 						s = s.Replace(m.Value, tag.Text);

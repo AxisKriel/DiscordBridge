@@ -83,13 +83,20 @@ namespace DiscordBridge.Framework
 		{
 			if (!String.IsNullOrWhiteSpace(_main.Config.BotToken))
 			{
-				await Connect(_main.Config.BotToken, TokenType.Bot);
-				if (State == ConnectionState.Connected)
+				try
 				{
-					// Do everything that needs to be done when the bot connects to the server here
+					await Connect(_main.Config.BotToken, TokenType.Bot);
+					if (State == ConnectionState.Connected)
+					{
+						// Do everything that needs to be done when the bot connects to the server here
 
-					if (CurrentGame.Name != "Terraria")
-						SetGame(new Game("Terraria", GameType.Default, "https://terraria.org"));
+						if (CurrentGame.Name != "Terraria")
+							SetGame(new Game("Terraria", GameType.Default, "https://terraria.org"));
+					}
+				}
+				catch (Exception ex)
+				{
+					TShock.Log.Error(ex.ToString());
 				}
 			}
 		}
@@ -161,16 +168,10 @@ namespace DiscordBridge.Framework
 					if (e.User.IsBot && _main.Config.ServerBots.Exists(b => b.Id == e.User.Id))
 					{
 						// Message is Multi-Server Broadcast
-						TSPlayer.All.SendMessage(e.Message.Text, Color.White);
+						TSPlayer.All.SendMessage(e.Message.Text, _main.ChatHandler.ChatColorOverride ?? Color.White);
 
 						// Strip tags when sending to console
-						TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), Color.White);
-					}
-					else
-					{
-						// Because I don't feel like making a custom handler, give some general info about tshock commands
-						await e.Channel.SendMessage($"TShock commands must be prefixed with `{_main.Config.BotPrefix}do `."
-							+ $"\nExample: `{_main.Config.BotPrefix}do who`.");
+						TSPlayer.Server.SendMessage(e.Message.Text.StripTags(), _main.ChatHandler.ChatColorOverride ?? Color.White);
 					}
 				}
 
@@ -234,10 +235,10 @@ namespace DiscordBridge.Framework
 						string msg = String.Format(_main.Config.Broadcast.Format.ParseColors(colorDictionary),
 							roleName, name, nick, text);
 
-						TSPlayer.All.SendMessage(msg, Color.White);
+						TSPlayer.All.SendMessage(msg, _main.ChatHandler.ChatColorOverride ?? Color.White);
 
 						// Strip tags when sending to console
-						TSPlayer.Server.SendMessage(msg.StripTags(), Color.White);
+						TSPlayer.Server.SendMessage(msg.StripTags(), _main.ChatHandler.ChatColorOverride ?? Color.White);
 					}
 				}
 			}

@@ -175,6 +175,18 @@ namespace DiscordBridge.Chat
 		}
 
 		/// <summary>
+		/// Adds multiple prefixes to the list of prefixes to render.
+		/// </summary>
+		/// <param name="prefixes">The prefixes to add.</param>
+		/// <returns>The builder instance.</returns>
+		public ChatMessageBuilder Prefix(IEnumerable<ChatMessage.Section> prefixes)
+		{
+			foreach (var section in prefixes)
+				_message.Prefixes.Add(section);
+			return this;
+		}
+
+		/// <summary>
 		/// Sets the string used to separate prefixes.
 		/// Default: Whitespace
 		/// </summary>
@@ -210,6 +222,18 @@ namespace DiscordBridge.Chat
 			// Don't add empty values
 			if (!String.IsNullOrWhiteSpace(suffix))
 				_message.Suffixes.Add(new ChatMessage.Section { Text = suffix, Color = color });
+			return this;
+		}
+
+		/// <summary>
+		/// Adds multiple suffixes to the list of suffixes to render.
+		/// </summary>
+		/// <param name="suffixes">The suffixes to add.</param>
+		/// <returns>The builder instance.</returns>
+		public ChatMessageBuilder Suffix(IEnumerable<ChatMessage.Section> suffixes)
+		{
+			foreach (var section in suffixes)
+				_message.Suffixes.Add(section);
 			return this;
 		}
 

@@ -18,7 +18,11 @@ namespace DiscordBridge.Chat
 		/// </summary>
 		public static event EventHandler<PlayerChattedEventArgs> PlayerChatted;
 
-		internal bool StripTagsFromConsole { get; set; }
+		internal Color? ChatColorOverride => Config?.ChatColorOverride.FromRGB();
+
+		internal ConfigFile Config { get; set; }
+
+		internal bool StripTagsFromConsole => Config.StripTagsFromConsole;
 
 		public static ChatMessageBuilder CreateMessage(string format)
 		{
@@ -81,16 +85,22 @@ namespace DiscordBridge.Chat
 							.Colorize(new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B)),
 						tsplr, e.Text);
 
+					/* Setting up the color dictionary - if there is need for more colors, they may be added later
+					 * Plugins may add more formatters by adding elements to the ColorFormatters property of event args */
+					args.ColorFormatters.Add("Group", new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B));
+					args.ColorFormatters.Add("Message", args.Message.Color);
+					args.ColorFormatters.Add("Name", args.Message.Name.Color);
+
 					PlayerChatting?.Invoke(this, args);
 
 					// Manually replicate Broadcast so that the message sent to the console doesn't include tags
 					TSPlayer.All.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters),
-						args.Message.Color ?? Color.White);
+						ChatColorOverride ?? args.Message.Color ?? Color.White);
 
 					if (StripTagsFromConsole)
-						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters).StripTags(), args.Message.Color ?? Color.White);
+						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters).StripTags(), ChatColorOverride ?? args.Message.Color ?? Color.White);
 					else
-						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters), args.Message.Color ?? Color.White);
+						TSPlayer.Server.SendMessage(args.Message.ToString().FormatChat(args.ChatFormatters), ChatColorOverride ?? args.Message.Color ?? Color.White);
 
 					TShock.Log.Info($"Broadcast: {args.Message.ToString()}");
 
@@ -114,7 +124,7 @@ namespace DiscordBridge.Chat
 					var args = new PlayerChattingEventArgs(e.Text);
 					PlayerChatting?.Invoke(this, args);
 
-					Color color = args.Message.Color ?? new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
+					Color color = ChatColorOverride ?? args.Message.Color ?? new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
 					NetMessage.SendData((int)PacketTypes.ChatText, -1, e.Who,
 						args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters), e.Who, color.R, color.G, color.B);
 					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, name, e.Who, 0, 0, 0, 0);

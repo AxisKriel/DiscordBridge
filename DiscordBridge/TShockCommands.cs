@@ -202,6 +202,7 @@ namespace DiscordBridge
 			try
 			{
 				Config = ConfigFile.Read();
+				ChatHandler.Config = Config;
 				e.Player.SendSuccessMessage("Discord bot has reloaded its configuration successfully.");
 			}
 			catch (Exception ex)

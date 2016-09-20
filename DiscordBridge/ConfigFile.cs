@@ -41,6 +41,8 @@ namespace DiscordBridge
 
 			public bool StripTagsFromConsole { get; set; } = true;
 
+			public string ChatColorOverride { get; set; }
+
 			public string DiscordChatFormat { get; set; } = "**<{1}> {2}{3}:** {4}";
 
 			public DiscordBroadcast DiscordBroadcast { get; set; } = new DiscordBroadcast
@@ -170,6 +172,11 @@ namespace DiscordBridge
 		/// Improves readability but prevents you from reading exactly what is being sent.
 		/// </summary>
 		public bool StripTagsFromConsole => Data.StripTagsFromConsole;
+
+		/// <summary>
+		/// If set, will always send messages with this RGB color instead of the actual message color.
+		/// </summary>
+		public string ChatColorOverride => Data.ChatColorOverride;
 
 		/// <summary>
 		/// Tells the bot how to format messages being sent from in-game to the Discord channel:

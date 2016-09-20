@@ -98,14 +98,7 @@ namespace DiscordBridge
 						return;
 					}
 
-					/* Setting up the color dictionary - if there is need for more colors, they may be added later
-					 * Plugins may add more formatters by adding elements to the ColorFormatters property of event args */
-					var colorDictionary = new Dictionary<string, Color?>(e.ColorFormatters)
-					{
-						["Group"] = new Color(e.Player.Group.R, e.Player.Group.G, e.Player.Group.B),
-						["Message"] = e.Message.Color,
-						["Name"] = e.Message.Name.Color
-					};
+					var colorDictionary = e.ColorFormatters;
 
 					#region Format Colors
 
@@ -141,12 +134,14 @@ namespace DiscordBridge
 
 					#endregion
 
-					await botUser.SendMessage(String.Format(bot.Broadcast.Format.FormatChat(e.ChatFormatters).ParseColors(colorDictionary),
-						botNick,
-						String.Join(e.Message.ToMessage().PrefixSeparator, prefixes),
-						name,
-						String.Join(e.Message.ToMessage().SuffixSeparator, suffixes),
-						text));
+					await botUser.SendMessage(ChatHandler.CreateMessage(bot.Broadcast.Format)
+						.SetHeader(botNick.ToString())
+						.Prefix(prefixes)
+						.SetName(name.ToString())
+						.Suffix(suffixes)
+						.SetText(text).ToString()
+						.FormatChat(e.ChatFormatters)
+						.ParseColors(colorDictionary));
 				}
 			}
 		}
@@ -177,7 +172,7 @@ namespace DiscordBridge
 		private void onInitialize(EventArgs args)
 		{
 			Config = ConfigFile.Read();
-			ChatHandler.StripTagsFromConsole = Config.StripTagsFromConsole;
+			ChatHandler.Config = Config;
 
 			Commands.ChatCommands.Add(new TShockAPI.Command(Permissions.Use, doDiscord, "bridge", "discord"));
 
@@ -188,6 +183,14 @@ namespace DiscordBridge
 			{
 				x.PrefixChar = Config.BotPrefix;
 				x.HelpMode = HelpMode.Private;
+				x.CustomPrefixHandler = m =>
+				{
+					// Do not require a prefix for private message commands (not counting bots, naturally)
+					if (!m.User.IsBot && m.Channel.IsPrivate && m.Channel == m.User.PrivateChannel)
+						return 0;
+					else
+						return -1;
+				};
 			});
 
 			initDiscordCommands();
@@ -200,7 +203,7 @@ namespace DiscordBridge
 			try
 			{
 				TSPlayer p = TShock.Players[e.Who];
-				if (p != null)
+				if (p != null && !String.IsNullOrWhiteSpace(p.Name))
 				{
 					foreach (string s in Config.TerrariaChannels)
 					{
