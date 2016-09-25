@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Logging;
 using DiscordBridge.Chat;
 using DiscordBridge.Extensions;
+using TerrariaApi.Server;
 using TShockAPI;
 
 namespace DiscordBridge.Framework
 {
 	public class BridgeClient : DiscordClient
 	{
+		public const string LOG_PATH = "DiscordLogs";
+
 		private DiscordBridge _main;
+
+		protected Dictionary<string, StreamWriter> Writers { get; }
 
 		/// <summary>
 		/// The server to broadcast messages to. This is currently always the first server on the list,
@@ -25,6 +32,7 @@ namespace DiscordBridge.Framework
 		internal BridgeClient()
 		{
 			Users = new Dictionary<ulong, BridgeUser>();
+			Writers = new Dictionary<string, StreamWriter>();
 
 			MessageReceived += onMessageReceived;
 		}
@@ -32,6 +40,8 @@ namespace DiscordBridge.Framework
 		internal BridgeClient(DiscordBridge main) : this()
 		{
 			_main = main;
+
+			Task.Run(() => initLog()).LogExceptions();
 		}
 
 		protected override void Dispose(bool isDisposing)
@@ -39,6 +49,9 @@ namespace DiscordBridge.Framework
 			if (isDisposing)
 			{
 				MessageReceived -= onMessageReceived;
+
+				foreach (var sr in Writers.Values)
+					sr.Dispose();
 
 				if (State == ConnectionState.Connected)
 				{
@@ -77,6 +90,35 @@ namespace DiscordBridge.Framework
 		{
 			get { return this[u.Id]; }
 			set { Users[u.Id] = value; }
+		}
+
+		private void initLog()
+		{
+			string nameDateFormat = "yyyy-MM-dd_hh-mm-ss";
+			string logDateFormat = "yyyy-MM-dd hh:mm:ss";
+			
+			Log.Message += (o, e) =>
+			{
+				/* This is going to be purely a message log to keep all messages said in channels by non-bot users,
+				   unless it's a Terraria channel. Source will always be channel name, and each channel will have
+				   a separate folder. */
+				if (!String.IsNullOrWhiteSpace(e.Source) && e.Severity == LogSeverity.Info)
+				{
+					Directory.CreateDirectory(Path.Combine(TShock.SavePath, LOG_PATH, e.Source));
+
+					string filename = $"{DateTime.Now.ToString(nameDateFormat)}.log";
+					string date = DateTime.Now.ToString(logDateFormat);
+
+					if (!Writers.ContainsKey(e.Source))
+					{
+						Writers.Add(e.Source, new StreamWriter(
+							new FileStream(Path.Combine(TShock.SavePath, LOG_PATH, e.Source, filename),
+							FileMode.Append, FileAccess.Write, FileShare.Read)));
+					}
+
+					Writers[e.Source].WriteLine($"{date} - {e.Message}");
+				}
+			};
 		}
 
 		public async Task StartUp()
@@ -140,7 +182,7 @@ namespace DiscordBridge.Framework
 				if (_main.Config.RememberLogins)
 					return await _main.Logins.Authenticate(user.Id);
 				else
-					return new BridgeUser(user);
+					return this[user] = new BridgeUser(user);
 			}
 
 			return player;
@@ -177,7 +219,13 @@ namespace DiscordBridge.Framework
 
 				// We don't want to broadcast what other bots are saying; when we do, we use multi-server chat
 				else if (e.User.IsBot)
+				{
+					// If the channel is a Terraria channel, log the message
+					if (_main.Config.TerrariaChannels.Contains(e.Channel.Name))
+						Log.Info(e.Channel.Name, $"{e.User.Name}> {e.Message.Text}");
+
 					return;
+				}
 
 				else
 				{
@@ -240,6 +288,8 @@ namespace DiscordBridge.Framework
 						// Strip tags when sending to console
 						TSPlayer.Server.SendMessage(msg.StripTags(), _main.ChatHandler.ChatColorOverride ?? Color.White);
 					}
+
+					Log.Info(e.Channel.Name, $"Discord> {e.User.Name}: {e.Message.Text}");
 				}
 			}
 			catch

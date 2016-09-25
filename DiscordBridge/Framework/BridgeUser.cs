@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Timers;
 using Discord;
+using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
 
@@ -44,7 +45,7 @@ namespace DiscordBridge.Framework
 		{
 			if (_messages.Count > 0)
 			{
-				await CommandChannel.SendMessage(String.Join("\n", _messages));
+				await CommandChannel.SendMessage(String.Join("\n", _messages)).LogExceptions();
 				_messages.Clear();
 			}
 		}
@@ -52,7 +53,7 @@ namespace DiscordBridge.Framework
 		public override async void SendErrorMessage(string msg)
 		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}
@@ -60,7 +61,7 @@ namespace DiscordBridge.Framework
 		public override async void SendInfoMessage(string msg)
 		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}
@@ -68,7 +69,7 @@ namespace DiscordBridge.Framework
 		public override async void SendSuccessMessage(string msg)
 		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}
@@ -76,7 +77,7 @@ namespace DiscordBridge.Framework
 		public override async void SendWarningMessage(string msg)
 		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}
@@ -84,7 +85,7 @@ namespace DiscordBridge.Framework
 		public override async void SendMessage(string msg, Color color)
 		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}
@@ -93,7 +94,7 @@ namespace DiscordBridge.Framework
 		{
 			// Maybe one day Discord will support custom message colors
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg);
+				await CommandChannel.SendMessage(msg).LogExceptions();
 			else
 				_messages.Add(msg);
 		}

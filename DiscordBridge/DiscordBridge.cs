@@ -79,8 +79,13 @@ namespace DiscordBridge
 					Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
 					if (c != null)
 					{
-						Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().FormatChat(e.ChatFormatters).StripTags(true));
-						if (m.State == MessageState.Failed)
+						try
+						{
+							Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().FormatChat(e.ChatFormatters).StripTags(true));
+							if (m.State == MessageState.Failed)
+								throw new Exception();
+						}
+						catch
 						{
 							TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");
 						}
@@ -92,9 +97,9 @@ namespace DiscordBridge
 				{
 					User botUser = Client.CurrentServer.GetUser(bot.Id);
 
-					if (!botUser.IsBot)
+					if (botUser == null || !botUser.IsBot || botUser.Status == UserStatus.Offline)
 					{
-						// We only support bots, mang
+						// We only support active bots, mang
 						return;
 					}
 
@@ -141,7 +146,7 @@ namespace DiscordBridge
 						.Suffix(suffixes)
 						.SetText(text).ToString()
 						.FormatChat(e.ChatFormatters)
-						.ParseColors(colorDictionary));
+						.ParseColors(colorDictionary)).LogExceptions();
 				}
 			}
 		}
@@ -151,22 +156,25 @@ namespace DiscordBridge
 			if (e.Handled)
 				return;
 
-			try
+			if (Client.State == ConnectionState.Connected)
 			{
-				TSPlayer p = TShock.Players[e.Who];
-				if (p != null)
+				try
 				{
-					foreach (string s in Config.TerrariaChannels)
+					TSPlayer p = TShock.Players[e.Who];
+					if (p != null)
 					{
-						Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
-						if (c != null)
+						foreach (string s in Config.TerrariaChannels)
 						{
-							await c.SendMessage($"`{p.Name}` has joined.");
+							Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
+							if (c != null)
+							{
+								await c.SendMessage($"`{p.Name}` has joined.");
+							}
 						}
 					}
 				}
+				catch { }
 			}
-			catch { }
 		}
 
 		private void onInitialize(EventArgs args)
