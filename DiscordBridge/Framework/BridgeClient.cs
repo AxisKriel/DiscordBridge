@@ -97,7 +97,7 @@ namespace DiscordBridge.Framework
 			string nameDateFormat = "yyyy-MM-dd_hh-mm-ss";
 			string logDateFormat = "yyyy-MM-dd hh:mm:ss";
 			
-			Log.Message += (o, e) =>
+			Log.Message += async (o, e) =>
 			{
 				/* This is going to be purely a message log to keep all messages said in channels by non-bot users,
 				   unless it's a Terraria channel. Source will always be channel name, and each channel will have
@@ -113,10 +113,10 @@ namespace DiscordBridge.Framework
 					{
 						Writers.Add(e.Source, new StreamWriter(
 							new FileStream(Path.Combine(TShock.SavePath, LOG_PATH, e.Source, filename),
-							FileMode.Append, FileAccess.Write, FileShare.Read)));
+							FileMode.Append, FileAccess.Write, FileShare.Read)) { AutoFlush = true });
 					}
 
-					Writers[e.Source].WriteLine($"{date} - {e.Message}");
+					await Writers[e.Source].WriteLineAsync($"{date} - {e.Message}");
 				}
 			};
 		}
