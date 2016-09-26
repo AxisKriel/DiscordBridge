@@ -97,9 +97,10 @@ namespace DiscordBridge
 				{
 					User botUser = Client.CurrentServer.GetUser(bot.Id);
 
-					if (botUser == null || !botUser.IsBot || botUser.Status == UserStatus.Offline)
+					if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
 					{
 						// We only support active bots, mang
+						Client.Log.Warning("OnChat", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
 						return;
 					}
 

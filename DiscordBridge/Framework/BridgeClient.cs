@@ -102,7 +102,7 @@ namespace DiscordBridge.Framework
 				/* This is going to be purely a message log to keep all messages said in channels by non-bot users,
 				   unless it's a Terraria channel. Source will always be channel name, and each channel will have
 				   a separate folder. */
-				if (!String.IsNullOrWhiteSpace(e.Source) && e.Severity == LogSeverity.Info)
+				if (!String.IsNullOrWhiteSpace(e.Source))
 				{
 					Directory.CreateDirectory(Path.Combine(TShock.SavePath, LOG_PATH, e.Source));
 
@@ -116,7 +116,17 @@ namespace DiscordBridge.Framework
 							FileMode.Append, FileAccess.Write, FileShare.Read)) { AutoFlush = true });
 					}
 
-					await Writers[e.Source].WriteLineAsync($"{date} - {e.Message}");
+					try
+					{
+						if (e.Severity == LogSeverity.Info)
+							await Writers[e.Source].WriteLineAsync($"{date} - {e.Message}");
+						else
+							await Writers[e.Source].WriteLineAsync($"{date} - {e.Severity.ToString()}: {e.Message}");
+					}
+					catch (ObjectDisposedException)
+					{
+						// This is normal behaviour for if we attempt to write to the log after it has been disposed
+					}
 				}
 			};
 		}
@@ -292,12 +302,9 @@ namespace DiscordBridge.Framework
 					Log.Info(e.Channel.Name, $"Discord> {e.User.Name}: {e.Message.Text}");
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
-				/* All exceptions are caught here to avoid crashes. Task life ain't easy, heh?
-				 * Seeing as the main purpose of this handler is to relay messages, it won't mind
-				 * missing on one or two messages from time to time, specially when said messages
-				 * are usually the irregular ones. */
+				Log.Error("OnMessageReceived", ex.Message, ex);
 			}
 		}
 
