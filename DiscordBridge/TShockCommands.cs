@@ -224,7 +224,7 @@ namespace DiscordBridge
 
 			Config.BotToken = e.Parameters[0];
 			
-			if (Client.State == ConnectionState.Connected)
+			if (Client.State == ConnectionState.Connected || Client.State == ConnectionState.Connecting)
 				await Client.Disconnect();
 
 			await Client.StartUp();
