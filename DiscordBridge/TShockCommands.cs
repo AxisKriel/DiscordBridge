@@ -37,6 +37,7 @@ namespace DiscordBridge
 			{
 				["accept-invite"] = () => acceptInvite(e),
 				["connect"] = () => connect(e),
+				["disconnect"] = () => disconnect(e),
 				["reload-config"] = () => reloadConfig(e),
 				["set-token" ] = () => setToken(e)
 			};
@@ -61,6 +62,17 @@ namespace DiscordBridge
 					}
 
 					commandList["connect"].Invoke();
+					return;
+
+				case "-d":
+				case "disconnect":
+					if (!e.Player.HasPermission(Permissions.Reconnect))
+					{
+						e.Player.SendErrorMessage("You do not have access to this command.");
+						return;
+					}
+
+					commandList["disconnect"].Invoke();
 					return;
 
 				case "-i":
@@ -209,6 +221,16 @@ namespace DiscordBridge
 					e.Player.SendInfoMessage("The discord bot is currently disconnecting. Wait for it to finish and then run this command.");
 					return;
 			}		
+		}
+
+		private async void disconnect(CommandArgs e)
+		{
+			e.Player.SendInfoMessage(" * Disconnecting...");
+			await Client.Disconnect();
+			if (Client.State == ConnectionState.Disconnected)
+				e.Player.SendInfoMessage($"The discord bot is now offline. Use {Commands.Specifier}discord connect to bring it back up.");
+			else
+				e.Player.SendErrorMessage("The discord bot could not be disconnected at the moment. Try again later, or shut down the server if you really need to bring it down.");
 		}
 
 		private void reloadConfig(CommandArgs e)
