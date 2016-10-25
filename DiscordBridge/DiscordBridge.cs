@@ -172,6 +172,24 @@ namespace DiscordBridge
 								await c.SendMessage($"`{p.Name}` has joined.");
 							}
 						}
+
+						foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
+						{
+							User botUser = Client.CurrentServer.GetUser(bot.Id);
+
+							if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
+							{
+								// We only support active bots, mang
+								Client.Log.Warning("OnGreet", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+								return;
+							}
+
+							var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
+							var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+
+							string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
+							await botUser.SendMessage($"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has joined.", Color.Yellow)}").LogExceptions();
+						}
 					}
 				}
 				catch { }
@@ -221,6 +239,24 @@ namespace DiscordBridge
 						{
 							await c.SendMessage($"`{p.Name}` has left.");
 						}
+					}
+
+					foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
+					{
+						User botUser = Client.CurrentServer.GetUser(bot.Id);
+
+						if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
+						{
+							// We only support active bots, mang
+							Client.Log.Warning("OnLeave", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+							return;
+						}
+
+						var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
+						var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+
+						string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
+						await botUser.SendMessage($"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has left.", Color.Yellow)}").LogExceptions();
 					}
 				}
 			}

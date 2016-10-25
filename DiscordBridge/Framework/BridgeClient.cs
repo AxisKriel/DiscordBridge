@@ -97,7 +97,7 @@ namespace DiscordBridge.Framework
 			string nameDateFormat = "yyyy-MM-dd_hh-mm-ss";
 			string logDateFormat = "yyyy-MM-dd hh:mm:ss";
 			
-			Log.Message += async (o, e) =>
+			Log.Message += (o, e) =>
 			{
 				/* This is going to be purely a message log to keep all messages said in channels by non-bot users,
 				   unless it's a Terraria channel. Source will always be channel name, and each channel will have
@@ -119,9 +119,9 @@ namespace DiscordBridge.Framework
 					try
 					{
 						if (e.Severity == LogSeverity.Info)
-							await Writers[e.Source].WriteLineAsync($"{date} - {e.Message}");
+							Writers[e.Source].WriteLine($"{date} - {e.Message}");
 						else
-							await Writers[e.Source].WriteLineAsync($"{date} - {e.Severity.ToString()}: {e.Message}");
+							Writers[e.Source].WriteLine($"{date} - {e.Severity.ToString()}: {e.Message}");
 					}
 					catch (ObjectDisposedException)
 					{
