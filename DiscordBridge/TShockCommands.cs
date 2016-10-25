@@ -160,6 +160,7 @@ namespace DiscordBridge
 
 		private async void connect(CommandArgs e)
 		{
+			bool force = String.Equals(e.Parameters.FirstOrDefault(), "-f", StringComparison.OrdinalIgnoreCase);
 			switch (Client.State)
 			{
 				case ConnectionState.Disconnected:
@@ -172,10 +173,23 @@ namespace DiscordBridge
 					return;
 
 				case ConnectionState.Connecting:
-					e.Player.SendInfoMessage("The discord bot is already trying to connect.");
+					if (!force)
+						e.Player.SendInfoMessage("The discord bot is already trying to connect.");
+					else
+					{
+						await Client.Disconnect();
+						goto case ConnectionState.Disconnected;
+					}
+
 					return;
 
 				case ConnectionState.Connected:
+					if (force)
+					{
+						await Client.Disconnect();
+						goto case ConnectionState.Disconnected;
+					}
+
 					e.Player.SendInfoMessage($"The discord bot is currently connected. Reconnect? ({Commands.Specifier}y OR {Commands.Specifier}n)");
 					e.Player.AddResponse("y", async (o) =>
 					{
