@@ -48,7 +48,7 @@ namespace DiscordBridge
 						&& !c.Names.Contains("logout")
 						&& c.Names.Contains(e.GetArg("command")));
 
-					if (command == null)
+					if (command == null && !player.AwaitingResponse.ContainsKey(e.GetArg("command")))
 					{
 						await e.Channel.SendMessage($"`{e.GetArg("command")}` is not a TShock command.");
 						return;
