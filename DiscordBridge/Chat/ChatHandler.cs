@@ -3,6 +3,7 @@ using DiscordBridge.Extensions;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
+using Microsoft.Xna.Framework;
 
 namespace DiscordBridge.Chat
 {

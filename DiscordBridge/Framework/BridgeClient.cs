@@ -10,6 +10,7 @@ using DiscordBridge.Chat;
 using DiscordBridge.Extensions;
 using TerrariaApi.Server;
 using TShockAPI;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace DiscordBridge.Framework
 {

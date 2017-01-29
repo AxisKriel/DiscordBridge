@@ -9,10 +9,11 @@ using DiscordBridge.Framework;
 using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace DiscordBridge
 {
-	[ApiVersion(1, 23)]
+	[ApiVersion(2, 0)]
 	public partial class DiscordBridge : TerrariaPlugin
 	{
 		public override string Author => "Enerdy";

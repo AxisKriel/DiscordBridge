@@ -6,6 +6,7 @@ using Discord;
 using TerrariaApi.Server;
 using TShockAPI;
 using TShockAPI.DB;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace DiscordBridge.Framework
 {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using TShockAPI;
+using Microsoft.Xna.Framework;
 
 namespace DiscordBridge.Chat
 {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using Terraria;
 using TShockAPI;
+using Microsoft.Xna.Framework;
 
 namespace DiscordBridge.Extensions
 {
