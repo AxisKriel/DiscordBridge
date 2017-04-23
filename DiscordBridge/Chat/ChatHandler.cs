@@ -1,9 +1,10 @@
 ﻿using System;
 using DiscordBridge.Extensions;
+using Microsoft.Xna.Framework;
 using Terraria;
+using Terraria.Localization;
 using TerrariaApi.Server;
 using TShockAPI;
-using Microsoft.Xna.Framework;
 
 namespace DiscordBridge.Chat
 {
@@ -120,15 +121,16 @@ namespace DiscordBridge.Chat
 						.Suffix(tsplr.Group.Suffix)
 						.ToString();
 
-					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, ply.name, e.Who, 0, 0, 0, 0);
+					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(ply.name), e.Who, 0, 0, 0, 0);
 					ply.name = name;
 					var args = new PlayerChattingEventArgs(e.Text);
 					PlayerChatting?.Invoke(this, args);
 
 					Color color = ChatColorOverride ?? args.Message.Color ?? new Color(tsplr.Group.R, tsplr.Group.G, tsplr.Group.B);
 					NetMessage.SendData((int)PacketTypes.ChatText, -1, e.Who,
-						args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters), e.Who, color.R, color.G, color.B);
-					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, name, e.Who, 0, 0, 0, 0);
+						NetworkText.FromLiteral(args.Message.ToString().FormatChat(args.ChatFormatters).ParseColors(args.ColorFormatters)),
+						e.Who, color.R, color.G, color.B);
+					NetMessage.SendData((int)PacketTypes.PlayerInfo, -1, -1, NetworkText.FromLiteral(name), e.Who, 0, 0, 0, 0);
 
 					var msg = CreateMessage("<{2}> {4}").SetName(CreateMessage(TShock.Config.ChatAboveHeadsFormat)
 						.SetHeader(tsplr.Group.Name)
