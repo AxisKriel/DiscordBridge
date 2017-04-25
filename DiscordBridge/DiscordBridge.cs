@@ -10,6 +10,7 @@ using Terraria;
 using TerrariaApi.Server;
 using TShockAPI;
 using Color = Microsoft.Xna.Framework.Color;
+using System.Threading.Tasks;
 
 namespace DiscordBridge
 {
@@ -68,133 +69,150 @@ namespace DiscordBridge
 			ServerApi.Hooks.ServerChat.Register(this, ChatHandler.Handle, 1);
 			ServerApi.Hooks.ServerLeave.Register(this, onLeave);
 
-			ChatHandler.PlayerChatted += onChat;;
+			ChatHandler.PlayerChatted += onChat; ;
 		}
 
-		private async void onChat(object sender, PlayerChattedEventArgs e)
+		private void onChat(object sender, PlayerChattedEventArgs e)
 		{
-			if (Client.State == ConnectionState.Connected)
+			Task.Run(async () =>
 			{
-				foreach (string s in Config.TerrariaChannels)
+				if (Client.State == ConnectionState.Connected)
 				{
-					Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
-					if (c != null)
+					foreach (string s in Config.TerrariaChannels)
 					{
+						Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
 						try
 						{
-							Message m = await c.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().FormatChat(e.ChatFormatters).StripTags(true));
+							Message m = await c?.SendMessage(e.Message.SetFormat(Config.DiscordChatFormat).ToString().FormatChat(e.ChatFormatters).StripTags(true));
 							if (m.State == MessageState.Failed)
-								throw new Exception();
+								TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");
 						}
-						catch
+						catch (Exception ex)
 						{
-							TShock.Log.ConsoleError($"discord-bridge: Message broadcasting to channel '{c.Name}' failed!");
+							TShock.Log.Error(ex.ToString());
+						}
+					}
+
+					// Multi-Server Broadcast
+					foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
+					{
+						User botUser = Client.CurrentServer.GetUser(bot.Id);
+
+						if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
+						{
+							// We only support active bots, mang
+							Client.Log.Warning("OnChat", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+							return;
+						}
+
+						var colorDictionary = e.ColorFormatters;
+
+						#region Format Colors
+
+						var botNick = new ChatMessage.Section(String.IsNullOrWhiteSpace(botUser.Nickname) ? botUser.Name : botUser.Nickname);
+						if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Specific)
+						{
+							Discord.Color discordColor = botUser.Roles.OrderBy(r => r.Position).Last()?.Color;
+							if (discordColor != null && discordColor != Discord.Color.Default)
+								botNick.Color = new Color(discordColor.R, discordColor.G, discordColor.B);
+						}
+						else if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Group || bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Message)
+							botNick.Color = colorDictionary[bot.Broadcast.Colors.BotNick.ToString()];
+
+						var prefixes = new List<ChatMessage.Section>(e.Message.Prefixes);
+						if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.None)
+							prefixes.ForEach(p => p.Color = null);
+						else if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Message)
+							prefixes.ForEach(p => p.Color = colorDictionary[bot.Broadcast.Colors.Prefixes.ToString()]);
+
+						ChatMessage.Section name = e.Message.Name;
+						if (bot.Broadcast.Colors.Name == ServerBroadcastColor.None)
+							name.Color = null;
+						else if (bot.Broadcast.Colors.Name == ServerBroadcastColor.Group || bot.Broadcast.Colors.Name == ServerBroadcastColor.Message)
+							name.Color = colorDictionary[bot.Broadcast.Colors.Name.ToString()];
+
+						var suffixes = new List<ChatMessage.Section>(e.Message.Suffixes);
+						if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.None)
+							suffixes.ForEach(s => s.Color = null);
+						else if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Message)
+							suffixes.ForEach(s => s.Color = colorDictionary[bot.Broadcast.Colors.Suffixes.ToString()]);
+
+						string text = e.Message.Text;
+
+						#endregion
+
+						try
+						{
+							Message m = await botUser.SendMessage(ChatHandler.CreateMessage(bot.Broadcast.Format)
+								.SetHeader(botNick.ToString())
+								.Prefix(prefixes)
+								.SetName(name.ToString())
+								.Suffix(suffixes)
+								.SetText(text).ToString()
+								.FormatChat(e.ChatFormatters)
+								.ParseColors(colorDictionary));
+							if (m?.State == MessageState.Failed)
+								Client.Log.Warning("OnChat", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+						}
+						catch (Exception ex)
+						{
+							TShock.Log.Error(ex.ToString());
 						}
 					}
 				}
-
-				// Multi-Server Broadcast
-				foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
-				{
-					User botUser = Client.CurrentServer.GetUser(bot.Id);
-
-					if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
-					{
-						// We only support active bots, mang
-						Client.Log.Warning("OnChat", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
-						return;
-					}
-
-					var colorDictionary = e.ColorFormatters;
-
-					#region Format Colors
-
-					var botNick = new ChatMessage.Section(String.IsNullOrWhiteSpace(botUser.Nickname) ? botUser.Name : botUser.Nickname);
-					if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Specific)
-					{
-						Discord.Color discordColor = botUser.Roles.OrderBy(r => r.Position).Last()?.Color;
-						if (discordColor != null && discordColor != Discord.Color.Default)
-							botNick.Color = new Color(discordColor.R, discordColor.G, discordColor.B);
-					}
-					else if (bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Group || bot.Broadcast.Colors.BotNick == ServerBroadcastColor.Message)
-						botNick.Color = colorDictionary[bot.Broadcast.Colors.BotNick.ToString()];
-
-					var prefixes = new List<ChatMessage.Section>(e.Message.Prefixes);
-					if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.None)
-						prefixes.ForEach(p => p.Color = null);
-					else if (bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Prefixes == ServerBroadcastColor.Message)
-						prefixes.ForEach(p => p.Color = colorDictionary[bot.Broadcast.Colors.Prefixes.ToString()]);
-
-					ChatMessage.Section name = e.Message.Name;
-					if (bot.Broadcast.Colors.Name == ServerBroadcastColor.None)
-						name.Color = null;
-					else if (bot.Broadcast.Colors.Name == ServerBroadcastColor.Group || bot.Broadcast.Colors.Name == ServerBroadcastColor.Message)
-						name.Color = colorDictionary[bot.Broadcast.Colors.Name.ToString()];
-
-					var suffixes = new List<ChatMessage.Section>(e.Message.Suffixes);
-					if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.None)
-						suffixes.ForEach(s => s.Color = null);
-					else if (bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Group || bot.Broadcast.Colors.Suffixes == ServerBroadcastColor.Message)
-						suffixes.ForEach(s => s.Color = colorDictionary[bot.Broadcast.Colors.Suffixes.ToString()]);
-
-					string text = e.Message.Text;
-
-					#endregion
-
-					await botUser.SendMessage(ChatHandler.CreateMessage(bot.Broadcast.Format)
-						.SetHeader(botNick.ToString())
-						.Prefix(prefixes)
-						.SetName(name.ToString())
-						.Suffix(suffixes)
-						.SetText(text).ToString()
-						.FormatChat(e.ChatFormatters)
-						.ParseColors(colorDictionary)).LogExceptions();
-				}
-			}
+			});
 		}
 
-		private async void onGreet(GreetPlayerEventArgs e)
+		private void onGreet(GreetPlayerEventArgs e)
 		{
 			if (e.Handled)
 				return;
 
-			if (Client.State == ConnectionState.Connected)
+			Task.Run(async () =>
 			{
-				try
+				if (Client.State == ConnectionState.Connected)
 				{
-					TSPlayer p = TShock.Players[e.Who];
-					if (p != null)
+					try
 					{
-						foreach (string s in Config.TerrariaChannels)
+						TSPlayer p = TShock.Players[e.Who];
+						if (p != null)
 						{
-							Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
-							if (c != null)
+							foreach (string s in Config.TerrariaChannels)
 							{
-								await c.SendMessage($"`{p.Name}` has joined.");
-							}
-						}
-
-						foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
-						{
-							User botUser = Client.CurrentServer.GetUser(bot.Id);
-
-							if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
-							{
-								// We only support active bots, mang
-								Client.Log.Warning("OnGreet", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
-								return;
+								Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
+								Message m = await c?.SendMessage($"`{p.Name}` has joined.");
+								if (m?.State == MessageState.Failed)
+									Client.Log.Warning("OnGreet", $"Broadcasting to channel {c.Name} failed");
 							}
 
-							var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
-							var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+							foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
+							{
+								User botUser = Client.CurrentServer.GetUser(bot.Id);
 
-							string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
-							await botUser.SendMessage($"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has joined.", Color.Yellow)}").LogExceptions();
+								if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
+								{
+									// We only support active bots, mang
+									Client.Log.Warning("OnGreet", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+									return;
+								}
+
+								var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
+								var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+
+								string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
+								Message m = await botUser.SendMessage(
+									$"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has joined.", Color.Yellow)}");
+								if (m?.State == MessageState.Failed)
+									Client.Log.Warning("OnGreet", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+							}
 						}
 					}
+					catch (Exception ex)
+					{
+						TShock.Log.Error(ex.ToString());
+					}
 				}
-				catch { }
-			}
+			});
 		}
 
 		private void onInitialize(EventArgs args)
@@ -226,42 +244,49 @@ namespace DiscordBridge
 			Logins = new LoginManager(Client);
 		}
 
-		private async void onLeave(LeaveEventArgs e)
+		private void onLeave(LeaveEventArgs e)
 		{
-			try
+			Task.Run(async () =>
 			{
-				TSPlayer p = TShock.Players[e.Who];
-				if (p != null && !String.IsNullOrWhiteSpace(p.Name))
+				try
 				{
-					foreach (string s in Config.TerrariaChannels)
+					TSPlayer p = TShock.Players[e.Who];
+					if (p != null && !String.IsNullOrWhiteSpace(p.Name))
 					{
-						Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
-						if (c != null)
+						foreach (string s in Config.TerrariaChannels)
 						{
-							await c.SendMessage($"`{p.Name}` has left.");
-						}
-					}
-
-					foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
-					{
-						User botUser = Client.CurrentServer.GetUser(bot.Id);
-
-						if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
-						{
-							// We only support active bots, mang
-							Client.Log.Warning("OnLeave", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
-							return;
+							Channel c = Client.CurrentServer.FindChannels(s, exactMatch: true).FirstOrDefault();
+							Message m = await c?.SendMessage($"`{p.Name}` has left.");
+							if (m?.State == MessageState.Failed)
+								Client.Log.Warning("OnLeave", $"Broadcasting to channel {c.Name} failed");
 						}
 
-						var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
-						var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+						foreach (ConfigFile.ServerBot bot in Config.ServerBots.FindAll(b => b.Id > 0))
+						{
+							User botUser = Client.CurrentServer.GetUser(bot.Id);
 
-						string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
-						await botUser.SendMessage($"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has left.", Color.Yellow)}").LogExceptions();
+							if (botUser == null || !botUser.IsBot /* Apparently bots can be "Offline" while being connected?? || botUser.Status == UserStatus.Offline*/)
+							{
+								// We only support active bots, mang
+								Client.Log.Warning("OnLeave", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+								return;
+							}
+
+							var roleColor = Client.CurrentServer.CurrentUser.Roles.OrderBy(r => r.Position).LastOrDefault()?.Color;
+							var color = roleColor == null ? Color.Yellow : new Color(roleColor.R, roleColor.G, roleColor.B);
+
+							string name = Client.CurrentServer.CurrentUser.Nickname ?? Client.CurrentServer.CurrentUser.Name;
+							Message m = await botUser.SendMessage($"{TShock.Utils.ColorTag($"{name}>", color)} {TShock.Utils.ColorTag($"{p.Name} has left.", Color.Yellow)}");
+							if (m?.State == MessageState.Failed)
+								Client.Log.Warning("OnLeave", $"Broadcasting to bot {bot.Id} failed (null: {botUser == null} | IsBot: {botUser?.IsBot} | Status: {botUser?.Status?.Value})");
+						}
 					}
 				}
-			}
-			catch { }
+				catch (Exception ex)
+				{
+					TShock.Log.Error(ex.ToString());
+				}
+			});
 		}
 
 		private async void onPostInitialize(EventArgs e)

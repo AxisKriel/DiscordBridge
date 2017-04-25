@@ -42,7 +42,17 @@ namespace DiscordBridge.Framework
 		{
 			_main = main;
 
-			Task.Run(() => initLog()).LogExceptions();
+			Task.Run(() =>
+			{
+				try
+				{
+					initLog();
+				}
+				catch (Exception ex)
+				{
+					TShock.Log.Error(ex.ToString());
+				}
+			});
 		}
 
 		protected override void Dispose(bool isDisposing)

@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Timers;
 using Discord;
-using TerrariaApi.Server;
 using TShockAPI;
-using TShockAPI.DB;
 using Color = Microsoft.Xna.Framework.Color;
 
 namespace DiscordBridge.Framework
@@ -46,56 +43,72 @@ namespace DiscordBridge.Framework
 		{
 			if (_messages.Count > 0)
 			{
-				await CommandChannel.SendMessage(String.Join("\n", _messages)).LogExceptions();
+					try
+					{
+						Message m = await CommandChannel.SendMessage(String.Join("\n", _messages));
+						if (m?.State == MessageState.Failed)
+							TShock.Log.Error($"discord-bridge: Message broadcasting to channel '{CommandChannel.Name}' failed!");
+				}
+					catch (Exception ex)
+					{
+						TShock.Log.Error(ex.ToString());
+					}
+				
 				_messages.Clear();
 			}
 		}
 
-		public override async void SendErrorMessage(string msg)
+		public override void SendErrorMessage(string msg)
 		{
-			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
-			else
-				_messages.Add(msg);
+			SendMessage(msg);
 		}
 
-		public override async void SendInfoMessage(string msg)
+		public override void SendInfoMessage(string msg)
 		{
-			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
-			else
-				_messages.Add(msg);
+			SendMessage(msg);
 		}
 
-		public override async void SendSuccessMessage(string msg)
+		public override void SendSuccessMessage(string msg)
 		{
-			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
-			else
-				_messages.Add(msg);
+			SendMessage(msg);
 		}
 
-		public override async void SendWarningMessage(string msg)
+		public override void SendWarningMessage(string msg)
 		{
-			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
-			else
-				_messages.Add(msg);
+			SendMessage(msg);
 		}
 
-		public override async void SendMessage(string msg, Color color)
+		public override void SendMessage(string msg, Color color)
 		{
-			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
-			else
-				_messages.Add(msg);
+			SendMessage(msg);
 		}
 
-		public override async void SendMessage(string msg, byte red, byte green, byte blue)
+		public override void SendMessage(string msg, byte red, byte green, byte blue)
 		{
 			// Maybe one day Discord will support custom message colors
+			SendMessage(msg);
+		}
+
+		/// <summary>
+		/// Queues a message to be sent to this discord client.
+		/// </summary>
+		/// <param name="msg">Text to send.</param>
+		public void SendMessage(string msg)
+		{
 			if (AutoFlush)
-				await CommandChannel.SendMessage(msg).LogExceptions();
+				Task.Run(async () =>
+				{
+					try
+					{
+						Message m = await CommandChannel.SendMessage(msg);
+						if (m?.State == MessageState.Failed)
+							TShock.Log.Error($"discord-bridge: Message broadcasting to channel '{CommandChannel.Name}' failed!");
+					}
+					catch (Exception ex)
+					{
+						TShock.Log.Error(ex.ToString());
+					}
+				});
 			else
 				_messages.Add(msg);
 		}
